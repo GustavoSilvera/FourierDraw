@@ -99,10 +99,10 @@ public:
 		penDown = !penDown;//to draw or not to draw
 	}
 	vec3 tartan(int i) {//from 1 to len
-		//== 100, 50, 50, 35, 10 == 245
+		const vec3 BLUE{ 50, 50, 200 }, GREEN{ 0, 140, 0 }, YELLOW{ 200, 200, 0 }, RED{ 200, 0, 0 }, DGREEN{0, 100, 0};
 		std::vector<int> div = { 50, 100, 15, 35, 50 };
 		int colour = i % sum(div);
-		std::vector<vec3> colours = { vec3(0, 0, 100), vec3(0, 140, 0), vec3(200, 200, 0),vec3(255, 0, 0), vec3(0, 100, 0) };
+		std::vector<vec3> colours = { BLUE, GREEN, YELLOW, RED, DGREEN};
 		for (int j = 0; j < div.size(); j++) {
 			if (colour < div[j]) return colours[j].times(1/255.0);
 			colour -= div[j];
@@ -149,7 +149,6 @@ class FourierDrawApp : public AppNative {
 	void keyDown(KeyEvent event);
 	static void drawFontText(float text, vec3 pos);
 	void update();
-	void labelList(class drawing *d);
 	void draw();
 	drawing d;
 	float dt = 60;// 60hz refresh rate
@@ -194,7 +193,7 @@ void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {
 		d.addRandom();
 		int i = d.train.size()-1;//index for new arrow
-		completeTxt.append(std::to_string(i) + "  len: " + std::to_string(d.train[i].length) + "   vel: " + std::to_string(d.train[i].velocity) + "\n");//kinda long precision but owell
+		completeTxt.append(std::to_string(i + 1) + "  len: " + std::to_string(d.train[i].length) + "   vel: " + std::to_string(d.train[i].velocity) + "\n");//kinda long precision but owell
 	}
 	if (event.isRight()) {
 		d.path.clear();//clear current path
@@ -220,11 +219,7 @@ void FourierDrawApp::drawFontText(float text, vec3 pos) {
 	mTextureFont->drawString(PRINT, Vec2f(pos.X, pos.Y + 20));
 	gl::color(1, 1, 1);
 }
-void FourierDrawApp::labelList(class drawing *d) {//optimized!
-	const vec3 initP(1, 1);
-	gl::drawString(completeTxt, ppm*Vec2f(initP.X, initP.Y), Color(1, 1, 1), Font("Arial", 35));
-	gl::color(1, 1, 1);
-}
+
 void FourierDrawApp::draw()
 {
 	gl::enableAlphaBlending();//good for transparent images
@@ -232,7 +227,8 @@ void FourierDrawApp::draw()
 	gl::color(1, 1, 1);
 
 	d.draw();
-	labelList(&d);
+	const vec3 initP{ 1, 1 };
+	gl::drawString(completeTxt, ppm*Vec2f(initP.X, initP.Y), Color(1, 1, 1), Font("Arial", 35));
 
 	gl::drawString("FPS: ", Vec2f(getWindowWidth() - 250, 10), Color(0, 1, 0), Font("Arial", 45));
 	drawFontText(getAverageFps(), vec3(getWindowWidth() - 130, 10));

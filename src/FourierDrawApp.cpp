@@ -154,7 +154,7 @@ class FourierDrawApp : public AppNative {
 	drawing d;
 	float dt = 60;// 60hz refresh rate
 	int freq = 1;
-	std::vector<std::pair<string, string>> s;
+	std::string completeTxt;
 private:
 	// Change screen resolution
 	int mScreenWidth, mScreenHeight;
@@ -184,16 +184,17 @@ void FourierDrawApp::getScreenResolution(int& width, int& height) {
 void FourierDrawApp::setup()
 {
 	srand(time(NULL));//seeds random number generator
-	mFont = Font("Times", 45);//fixed custom font
+	mFont = Font("Arial", 45);//fixed custom font
 	mTextureFont = gl::TextureFont::create(mFont);
 	d.init(vec3(getWindowWidth()/(2*ppm), getWindowHeight()/(2*ppm)));//first drawn @ 5m,8m
-	s.push_back(std::pair<string, string>("1", "1"));
+	completeTxt.append("1  len: " + std::to_string(d.train[0].length) + "   vel: " + std::to_string(d.train[0].velocity) + "\n");
 
 }
 void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {
 		d.addRandom();
-		s.push_back(std::pair<string, string> (std::to_string(d.train[d.last].length), std::to_string(d.train[d.last].velocity)));
+		int i = d.train.size()-1;//index for new arrow
+		completeTxt.append(std::to_string(i) + "  len: " + std::to_string(d.train[i].length) + "   vel: " + std::to_string(d.train[i].velocity) + "\n");//kinda long precision but owell
 	}
 	if (event.isRight()) {
 		d.path.clear();//clear current path
@@ -219,22 +220,9 @@ void FourierDrawApp::drawFontText(float text, vec3 pos) {
 	mTextureFont->drawString(PRINT, Vec2f(pos.X, pos.Y + 20));
 	gl::color(1, 1, 1);
 }
-void FourierDrawApp::labelList(class drawing *d) {//***CAN EASILY OPTIMIZE BC EVERYTHING's CONSTANT:: DONT NEED REFRESH
+void FourierDrawApp::labelList(class drawing *d) {//optimized!
 	const vec3 initP(1, 1);
-	const float verticalDiff = 0.5;//meters apart vertically
-	const float horizontalDiff = 0.5;//meters apart vertically
-	
-	int i = 0;
-	for (arrow& a : d->train) {
-		float dY = verticalDiff * i;//increment y position for each button based off index
-		gl::drawString(std::to_string(i+1), ppm*Vec2f(initP.X - horizontalDiff, initP.Y + dY), Color(1, 1, 1), Font("Times", 35));
-		gl::drawString("len:", ppm*Vec2f(initP.X, initP.Y + dY), Color(1, 1, 1), Font("Times", 35));
-		const float rightX = initP.X + horizontalDiff;//slightly shifted to not affect the string
-		gl::drawString(s[i].first, ppm*Vec2f(rightX, initP.Y + dY), Color(1, 1, 1), Font("Times", 35));
-		gl::drawString("vel:", ppm*Vec2f(rightX + 2*horizontalDiff, initP.Y + dY), Color(1, 1, 1), Font("Times", 35));
-		gl::drawString(s[i].second, ppm*Vec2f(rightX + 3 * horizontalDiff, initP.Y + dY), Color(1, 1, 1), Font("Times", 35));
-		++i;
-	}
+	gl::drawString(completeTxt, ppm*Vec2f(initP.X, initP.Y), Color(1, 1, 1), Font("Arial", 35));
 	gl::color(1, 1, 1);
 }
 void FourierDrawApp::draw()

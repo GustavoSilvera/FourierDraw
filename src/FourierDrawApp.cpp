@@ -4,7 +4,8 @@
 #include <string.h>
 #include <array>
 #include "cinder/gl/TextureFont.h"
-
+#include <fstream>
+#include <filesystem>
 using namespace ci;
 using namespace ci::app;
 using namespace std;
@@ -13,6 +14,7 @@ using namespace std;
 float ppm = 100;//scale of how many pixels are in 1 SI Meter
 Font mFont;//custom font for optimized drawing
 gl::TextureFontRef mTextureFont;//custom opengl::texture
+std::ofstream scriptFile;
 
 static float sqr(float x) { return x * x; }
 static inline float toDeg(float rad) { return (rad * 180 / pi); }
@@ -26,6 +28,7 @@ static inline float clamp(float min, float max, float i) {
 	}
 	return min;
 }
+std::string completeTxt;
 template<typename T>
 static inline T sum(const std::vector<T> &v) {
 	T fin_sum = 0;
@@ -75,64 +78,94 @@ public:
 	std::vector<std::pair<vec3, vec3>> path;
 	bool penDown = false;
 	int last;//index of final arrow
-	void init(vec3 initPos) {
-		train.push_back(arrow(1, 1, 0, initPos));
+	vec3 initP;
+	bool hide = false;
+	void addArrow(arrow a) {
+		train.push_back(a);
+		int i = train.size() - 1;//index for new arrow
+		completeTxt.append(std::to_string(i + 1) + "  len: " + std::to_string(train[i].length) + "   vel: " + std::to_string(train[i].velocity) + "\n");//kinda long precision but owell
+	}
+	void init() {
+		addArrow(arrow{ 1, 1, 0, initP });
+	}
+	void fileInit() {
+		#define MAX_LINE 20
+		std::ifstream file("script.txt");
+		while (!file.eof()) {
+			char line[MAX_LINE];
+			file.getline(line, MAX_LINE);
+			char radius[MAX_LINE];
+			char vel[MAX_LINE];
+			char angle[MAX_LINE];
 
+			sscanf(line, "%s %s %s", radius, vel, angle);
+			addArrow(arrow{ (float)atof(radius), (float)atof(vel), (float)atof(angle) , initP});
+		}
 	}
 	void addRandom() {
-		train.push_back(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0));//floating point
+		vec3 newPos;
+		if (train.empty()) {
+			train.push_back(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0, initP));//floating point
+		}
+		else {
+			last = train.size() - 1;
+			train.push_back(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0, train[last].tip()));//floating point
+		}
 		//train.push_back(arrow(0.5 + (rand() % 1), (rand() % 10) - 5, (rand() % 7)));//integer
 
 		// adds random arrow with length from (0.5 -> 1.5) vel (-5 -> 5) & thta (0 -> 6.28 [2pi])//no 6.28
 	}
 	void update(float dt, int freq) {
-		for (int j = 0; j < freq; j++) {
-			last = train.size() - 1;
-			for (int i = 0; i < last + 1; i++) {
-				train[i].theta += train[i].velocity / dt;//updates position over time
-				if (i > 0) train[i].pos = train[i - 1].tip();//ensures all positions are tip to tip
+		if (!train.empty()) {
+			for (int j = 0; j < freq; j++) {
+				last = train.size() - 1;
+				for (int i = 0; i < last + 1; i++) {
+					train[i].theta += train[i].velocity / dt;//updates position over time
+					if (i > 0) train[i].pos = train[i - 1].tip();//ensures all positions are tip to tip
+				}
+				path.push_back(std::pair<vec3, vec3>(tartan(path.size()), train[last].tip()));
 			}
-			path.push_back(std::pair<vec3, vec3>(tartan(path.size()), train[last].tip()));
 		}
 	}
 	void penToggle() {
 		penDown = !penDown;//to draw or not to draw
 	}
-	vec3 tartan(int i) {//from 1 to len
+	vec3 tartan(int i) {
 		const vec3 BLUE{ 50, 50, 200 }, GREEN{ 0, 140, 0 }, YELLOW{ 200, 200, 0 }, RED{ 200, 0, 0 }, DGREEN{0, 100, 0};
-		std::vector<int> div = { 50, 100, 15, 35, 50 };
+		std::vector<int> div = { 100, 5, 35, 50 };
 		int colour = i % sum(div);
-		std::vector<vec3> colours = { BLUE, GREEN, YELLOW, RED, DGREEN};
+		std::vector<vec3> colours = { GREEN, YELLOW, RED, DGREEN};
 		for (int j = 0; j < div.size(); j++) {
-			if (colour < div[j]) return colours[j].times(1/255.0);
-			colour -= div[j];
+			if (colour < div[j]) return colours[j].times(1/255.0);//checks if colour(index) is less than div[j]
+			colour -= div[j];//else checks next div[j] by ignoring previous ones
 		}
 		//should never happen
 		return vec3{ 1, 1, 1 };
 	}
 	void draw() {
-		const float width = 0.03;//3cm constant width for all arrows
-		for (int i = 0; i < train.size(); i++) {
-			glPushMatrix();//rotation
-			gl::translate(Vec3f(ppm*train[i].pos.X, ppm*train[i].pos.Y, 0));//origin of rotation
-			gl::rotate(Vec3f(0, 0, toDeg(train[i].theta)));//3rd input used for 2D rotation (angle)
-			gl::color(1, 1, 1);//cool colour transition (neat maths)
-			gl::drawSolidRect(Area(//final transformation
-				ppm*Vec2f(0, - width/2), //([X] no change,[Y] half of height (center))
-				ppm*Vec2f(train[i].length, width/2)//([X] add radius,[Y] half of height (center))
-			));
-			const float triScale = 0.09;//scale of size of triangle
-			float triHeight = 1.732*triScale*train[i].length;//achieved thru height of triangle (L = 2*C*x*cos(30°)), with triscale(c) and length(x)
-			gl::drawSolidTriangle(
-				ppm*Vec2f(train[i].length - triHeight, -width / 2 - triScale * train[i].length),
-				ppm*Vec2f(train[i].length - triHeight,  width / 2 + triScale * train[i].length),
-				ppm*Vec2f(train[i].length, 0)
-			);
-			glPopMatrix();//end of rotation code
-			
+		const float width = 0.04;//3cm constant width for all arrows
+		if (!hide) {
+			for (int i = 0; i < train.size(); i++) {
+				glPushMatrix();//rotation
+				gl::translate(Vec3f(ppm*train[i].pos.X, ppm*train[i].pos.Y, 0));//origin of rotation
+				gl::rotate(Vec3f(0, 0, toDeg(train[i].theta)));//3rd input used for 2D rotation (angle)
+				gl::color(1, 1, 1);//cool colour transition (neat maths)
+				gl::drawSolidRect(Area(//final transformation
+					ppm*Vec2f(0, -width / 2), //([X] no change,[Y] half of height (center))
+					ppm*Vec2f(train[i].length, width / 2)//([X] add radius,[Y] half of height (center))
+				));
+				const float triScale = 0.09;//scale of size of triangle
+				float triHeight = 1.732*triScale*train[i].length;//achieved thru height of triangle (L = 2*C*x*cos(30°)), with triscale(c) and length(x)
+				gl::drawSolidTriangle(
+					ppm*Vec2f(train[i].length - triHeight, -width / 2 - triScale * train[i].length),
+					ppm*Vec2f(train[i].length - triHeight, width / 2 + triScale * train[i].length),
+					ppm*Vec2f(train[i].length, 0)
+				);
+				glPopMatrix();//end of rotation code
+
+			}
 		}
 		if (penDown) {
-			
 			for (int i = 1; i < path.size(); i++) {//start @ 2nd to not worry abt vector end
 				gl::color(path[i - 1].first.X, path[i - 1].first.Y, path[i - 1].first.Z);//TARTAN
 				gl::drawLine(ppm*Vec2f(path[i - 1].second.X, path[i - 1].second.Y), ppm*Vec2f(path[i].second.X, path[i].second.Y));
@@ -153,7 +186,6 @@ class FourierDrawApp : public AppNative {
 	drawing d;
 	float dt = 60;// 60hz refresh rate
 	int freq = 1;
-	std::string completeTxt;
 private:
 	// Change screen resolution
 	int mScreenWidth, mScreenHeight;
@@ -185,9 +217,9 @@ void FourierDrawApp::setup()
 	srand(time(NULL));//seeds random number generator
 	mFont = Font("Arial", 45);//fixed custom font
 	mTextureFont = gl::TextureFont::create(mFont);
-	d.init(vec3(getWindowWidth()/(2*ppm), getWindowHeight()/(2*ppm)));//first drawn @ 5m,8m
-	completeTxt.append("1  len: " + std::to_string(d.train[0].length) + "   vel: " + std::to_string(d.train[0].velocity) + "\n");
-
+	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
+	d.fileInit();//first drawn 
+	
 }
 void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {
@@ -203,8 +235,24 @@ void FourierDrawApp::mouseDown(MouseEvent event) {
 void FourierDrawApp::keyDown(KeyEvent event) {
 	if (event.getCode() == KeyEvent::KEY_UP) freq += 1;//makes everything a bit faster
 	if (event.getCode() == KeyEvent::KEY_DOWN) freq -= 1;//makes everything a bit slower
-	if (event.getCode() == KeyEvent::KEY_RIGHT) ppm += 2;//makes everything a bit faster
-	if (event.getCode() == KeyEvent::KEY_LEFT) ppm -= 2;//makes everything a bit slower
+	if (event.getCode() == KeyEvent::KEY_RIGHT) {
+		ppm += 5;//makes everything a bit larger
+		if(!d.train.empty()) d.train[0].pos = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));//centers
+	}
+	if (event.getCode() == KeyEvent::KEY_LEFT) {
+		if (ppm > 5) ppm -= 5;//makes everything a bit smaller
+		if (!d.train.empty()) d.train[0].pos = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));//centers
+
+	}
+	if (event.getCode() == KeyEvent::KEY_SPACE) if (freq != 0) freq = 0; else freq = 1;//toggles between play & pause
+	if (event.getChar() == 'r') {
+		d.train.clear();
+		completeTxt.clear();
+	}
+	if (event.getChar() == 'h') {
+		d.hide = !d.hide;
+	}
+
 }
 void FourierDrawApp::update()
 {
@@ -223,7 +271,7 @@ void FourierDrawApp::drawFontText(float text, vec3 pos) {
 void FourierDrawApp::draw()
 {
 	gl::enableAlphaBlending();//good for transparent images
-	gl::clear( Color( 0, 0, 0 ) ); 
+	gl::clear( Color(0, 0, 63/255.0) );//dark blue
 	gl::color(1, 1, 1);
 
 	d.draw();

@@ -15,6 +15,7 @@ float ppm = 100;//scale of how many pixels are in 1 SI Meter
 Font mFont;//custom font for optimized drawing
 gl::TextureFontRef mTextureFont;//custom opengl::texture
 std::ofstream scriptFile;
+//typedef std::pair<float, float> complex;
 
 static float sqr(float x) { return x * x; }
 static inline float toDeg(float rad) { return (rad * 180 / pi); }
@@ -76,7 +77,7 @@ class drawing {
 public:
 	std::vector<arrow> train;
 	std::vector<std::pair<vec3, vec3>> path;
-	bool penDown = false;
+	bool penDown = true;
 	int last;//index of final arrow
 	vec3 initP;
 	bool hide = false;
@@ -102,6 +103,90 @@ public:
 			addArrow(arrow{ (float)atof(radius), (float)atof(vel), (float)atof(angle) , initP});
 		}
 	}
+	struct fourierElements {
+		float real, imag, freq, phase, amplitude;
+	};
+	struct complex {
+		complex(float r, float i) : re(r), im(-i) {}
+		float re, im;//real and imaginary components
+		complex mult(complex a) {//MAKE THIS INTO CLASS FUNCTION
+			float re_new = a.re*re - a.im*im;//i^2 = -1
+			float im_new = a.re*im + a.im*re;
+			return(complex{ re_new, im_new });
+		}
+		complex operator* (float scalar) {//MAKE THIS INTO CLASS FUNCTION
+			return(complex{ scalar*re, scalar*im});
+		}
+		void add(complex a) {//not good ood but owell...
+			re += a.re;
+			im -= a.im;
+		}
+		float magnitude() {
+			return sqrt(sqr(re) + sqr(im));
+		}
+		float angle() {
+			return atan2(im, re);
+		}
+	};
+	std::vector<fourierElements> discreteFourierTransform(std::vector<complex> x) {
+		std::vector<fourierElements> X;
+		const float N = x.size();
+		for (int k = 0; k < N; k++) {
+			complex sum{ 0, 0 };
+			for (int n = 0; n < N; n++) {
+				float phi = (2 * pi*k*n) / N;
+				const complex c { cos(phi), -sin(phi) };
+				sum.add( x[n].mult(c) );
+			}
+			sum.re = sum.re / N;
+			sum.im = sum.im / N;
+			float freq = k;
+			float phase = sum.angle();
+			float amplitude = sum.magnitude();
+			X.push_back(fourierElements{sum.re, sum.im, freq, phase, amplitude});
+		}
+		return X;
+	}
+	std::vector<fourierElements> sort(std::vector<fourierElements> f) {//simple bubble sort of amplitudes
+		int size = f.size();
+		fourierElements temp;
+		for (int i = 0; i < size; i++)//fwds
+		{
+			for (int j = size - 1; j > i; j--)//bkwds
+			{
+				if (f[j].amplitude > f[j - 1].amplitude)
+				{
+					temp = f[j - 1];
+					f[j - 1] = f[j];
+					f[j] = temp;
+				}
+			}
+		}
+		return(f);
+	}
+	std::vector<complex> coords;
+	void fourierInit() {
+		coords = {
+
+			/*complex{ 3, 0 }, complex{ 0, 1 }, complex{ -3, 0 }, complex{ 0, -1 },
+			complex{ 4, 0 }, complex{ 0, 2 }, complex{ -4, 0 }, complex{ 0, -2 },*/
+		};
+		for (int i = 0; i < 100; i++) {
+			if (i % 5 != 0) continue;
+			coords.push_back(complex(cos(i/M_PI), sin(i/M_PI)) * (i / 20));
+		}
+		
+		std::vector<fourierElements> fourierY = discreteFourierTransform(coords);
+		fourierY = sort(fourierY);//sorts in order of amplitudes (radii)
+		for (int i = 0; i < fourierY.size(); i++) {
+			float freq = fourierY[i].freq;//angular vel
+			float radius = fourierY[i].amplitude;//radius
+			float phase = fourierY[i].phase;//initial angle
+			addArrow(arrow{ radius, freq, phase, initP });
+		}
+
+	}
+	
 	void addRandom() {
 		vec3 newPos;
 		if (train.empty()) {
@@ -165,6 +250,12 @@ public:
 
 			}
 		}
+		if (!coords.empty()) {
+			for (int i = 0; i < coords.size(); i++) {
+				gl::color(0, 0.5, 1);//light blue
+				gl::drawSolidCircle(ppm*Vec2f(coords[i].re + initP.X, coords[i].im + initP.Y), 5);
+			}
+		}
 		if (penDown) {
 			for (int i = 1; i < path.size(); i++) {//start @ 2nd to not worry abt vector end
 				gl::color(path[i - 1].first.X, path[i - 1].first.Y, path[i - 1].first.Z);//TARTAN
@@ -184,7 +275,7 @@ class FourierDrawApp : public AppNative {
 	void update();
 	void draw();
 	drawing d;
-	float dt = 60;// 60hz refresh rate
+	float dt = 600;// 60hz refresh rate
 	int freq = 1;
 private:
 	// Change screen resolution
@@ -218,8 +309,8 @@ void FourierDrawApp::setup()
 	mFont = Font("Arial", 45);//fixed custom font
 	mTextureFont = gl::TextureFont::create(mFont);
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
-	d.fileInit();//first drawn 
-	
+	//d.fileInit();//first drawn 
+	d.fourierInit();
 }
 void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {

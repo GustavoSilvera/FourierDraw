@@ -1,5 +1,7 @@
 #include "cinder/app/AppNative.h"
 #include "cinder/gl/gl.h"
+#include "cinder/ImageIo.h"
+#include "cinder/gl/Texture.h"
 #include <vector>
 #include <string.h>
 #include <array>
@@ -9,7 +11,6 @@
 using namespace ci;
 using namespace ci::app;
 using namespace std;
-#define pi 3.1415
 
 float ppm = 100;//scale of how many pixels are in 1 SI Meter
 Font mFont;//custom font for optimized drawing
@@ -17,9 +18,10 @@ gl::TextureFontRef mTextureFont;//custom opengl::texture
 std::ofstream scriptFile;
 //typedef std::pair<float, float> complex;
 #define c complex
+#define NUM_INTERPOLATE 5
 static float sqr(float x) { return x * x; }
-static inline float toDeg(float rad) { return (rad * 180 / pi); }
-static inline float toRad(float deg) { return (deg * pi / 180); }
+static inline float toDeg(float rad) { return (rad * 180 / M_PI); }
+static inline float toRad(float deg) { return (deg * M_PI / 180); }
 static inline float clamp(float min, float max, float i) {
 	if (i > min) {
 		if (i < max) {
@@ -38,7 +40,6 @@ static inline T sum(const std::vector<T> &v) {
 	}
 	return fin_sum;
 }
-
 class vec3 {
 public:
 	vec3(float x = 0.0, float y = 0.0, float z = 0.0) : X(x), Y(y), Z(z) {}
@@ -53,13 +54,11 @@ public:
 		return vec3(X + v.X, Y + v.Y, Z + v.Z);
 	}
 };
-
 class arrow {
 public:
 	arrow(float L, float V, float T, vec3 p) : length(L), velocity(V), theta(T), pos(p) {}
 	arrow(float L, float V, float T) : length(L), velocity(V), theta(T) {}
-	arrow() : length(1), velocity(0), theta(pi/2) {}
-	
+	arrow() : length(1), velocity(0), theta(M_PI/2) {}
 	float length;//meters
 	float velocity;//radians/sec
 	float theta;//radians
@@ -97,7 +96,68 @@ public:
 struct f_elements {
 	float real, imag, freq, phase, amplitude;
 };
+typedef std::vector<complex> compVect;
 typedef std::vector<f_elements> fourierSeries;
+fourierSeries discreteFourierTransform(compVect x) {
+	fourierSeries X;
+	const float N = x.size();//accuracy??
+	for (int k = 0; k < N; k++) {
+		complex sum{ 0, 0 };//complex number final
+		for (int n = 0; n < N; n++) {
+			float phi = (2 * M_PI*k*n) / N;//constant for angular velocity
+			const complex c{ cos(phi), -sin(phi) };//cos and sin component
+			sum.add(x[n].mult(c));//multiply cos & sin comp by original complex
+		}
+		sum.re = sum.re / N;
+		sum.im = sum.im / N;
+		float freq = -k;
+		float phase = sum.angle();
+		float amplitude = sum.magnitude();
+		X.push_back(f_elements{ sum.re, sum.im, freq, phase, amplitude });
+	}
+	return X;
+}
+compVect interpolateComplex(compVect v, const int n_interpolate){
+	const int initSize = v.size();
+	std::vector<complex> newVec;
+	for (int i = 0; i < initSize; i++) {
+		newVec.push_back(v[i]);
+		float deltaX, deltaY;
+		if (i < initSize - 1) {
+			deltaX = (v[i + 1].re - v[i].re) / (n_interpolate + 1);
+			deltaY = (v[i + 1].im - v[i].im) / (n_interpolate + 1);
+		}
+		else {
+			deltaX = (v[0].re - v[i].re) / (n_interpolate + 1);
+			deltaY = (v[0].im - v[i].im) / (n_interpolate + 1);
+		}
+		for (int j = 1; j < n_interpolate + 1; j++) {
+			newVec.push_back(complex{ v[i].re + deltaX * j, -(v[i].im + deltaY * j) });
+		}
+	}
+	return newVec;
+}
+fourierSeries sort(fourierSeries f) {//simple bubble sort of amplitudes
+	int size = f.size();
+	f_elements temp;
+	for (int i = 0; i < size; i++){//fwds
+		for (int j = size - 1; j > i; j--){//bkwds
+			if (f[j].amplitude > f[j - 1].amplitude){
+				temp = f[j - 1];
+				f[j - 1] = f[j];
+				f[j] = temp;
+			}
+		}
+	}
+	return(f);
+}
+compVect scale(compVect v, const float scalar){
+	compVect scaled;
+	for (int i = 0; i < v.size(); i++) {
+		scaled.push_back (v[i] * (scalar));//33% size
+	}
+	return scaled;
+}
 class drawing {
 public:
 	std::vector<arrow> train;
@@ -107,6 +167,7 @@ public:
 	vec3 initP;
 	float dt = 60;
 	bool hide = false;
+	bool pointDraw = true;
 	void addArrow(arrow a) {
 		train.push_back(a);
 		int i = train.size() - 1;//index for newest arrow
@@ -132,39 +193,6 @@ public:
 			addArrow(arrow{ (float)atof(radius), (float)atof(vel), (float)atof(angle) , initP});
 		}
 	}
-	fourierSeries discreteFourierTransform(std::vector<complex> x) {
-		fourierSeries X;
-		const float N = x.size();//accuracy??
-		for (int k = 0; k < N; k++) {
-			complex sum{ 0, 0 };//complex number final
-			for (int n = 0; n < N; n++) {
-				float phi = (2 * pi*k*n) / N;//constant for angular velocity
-				const complex c{ cos(phi), -sin(phi) };//cos and sin component
-				sum.add(x[n].mult(c));//multiply cos & sin comp by original complex
-			}
-			sum.re = sum.re / N;
-			sum.im = sum.im / N;
-			float freq = -k;
-			float phase = sum.angle();
-			float amplitude = sum.magnitude();
-			X.push_back(f_elements{ sum.re, sum.im, freq, phase, amplitude });
-		}
-		return X;
-	}
-	fourierSeries sort(fourierSeries f) {//simple bubble sort of amplitudes
-		int size = f.size();
-		f_elements temp;
-		for (int i = 0; i < size; i++){//fwds
-			for (int j = size - 1; j > i; j--){//bkwds
-				if (f[j].amplitude > f[j - 1].amplitude){
-					temp = f[j - 1];
-					f[j - 1] = f[j];
-					f[j] = temp;
-				}
-			}
-		}
-		return(f);
-	}
 	std::vector<complex> coords;
 	void fourierInit() {
 		scriptFile.clear();
@@ -176,26 +204,8 @@ public:
 			c{ -6.5, 2 }, c{ -5, 4 }, c{ -3.2, 6 }, c{ -2, 5 }, c{ -3, 3 }
 		};
 		//interpolate points in btwn the fake points
-		const int n_interpolate = 5;//5 points in btwn
-		const int initSize = v.size();
-		for (int i = 0; i < initSize; i++) {
-			coords.push_back(v[i]);
-			float deltaX, deltaY;
-			if (i < initSize - 1) {
-				deltaX = (v[i + 1].re - v[i].re) / (n_interpolate + 1);
-				deltaY = (v[i + 1].im - v[i].im) / (n_interpolate + 1);
-			}
-			else {
-				deltaX = (v[0].re - v[i].re) / (n_interpolate + 1);
-				deltaY = (v[0].im - v[i].im) / (n_interpolate + 1);
-			}
-			for (int j = 1; j < n_interpolate + 1; j++) {
-				coords.push_back(complex{ v[i].re + deltaX * j, -(v[i].im + deltaY * j) });
-			}
-		}
-		for (int i = 0; i < coords.size(); i++) {
-			coords[i] = coords[i]*(0.33);//33% size
-		}
+		coords = interpolateComplex(v, 5);//5 points
+		coords = scale(coords, 0.33);
 		
 		fourierSeries fourier = discreteFourierTransform(coords);
 		fourier = sort(fourier);//sorts in order of amplitudes (radii)
@@ -205,10 +215,9 @@ public:
 			float phase = fourier[i].phase;//initial angle
 			addArrow(arrow{ radius, freq, phase, initP });
 		}
-		dt = train.size() / (2 * pi);//NEED THIS
+		dt = train.size() / (2 * M_PI);//NEED THIS
 
 	}
-	
 	void addRandom() {
 		vec3 newPos;
 		if (train.empty()) {
@@ -221,7 +230,7 @@ public:
 		addArrow(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0, newPos));//floating point
 		//train.push_back(arrow(0.5 + (rand() % 1), (rand() % 10) - 5, (rand() % 7)));//integer
 
-		// adds random arrow with length from (0.5 -> 1.5) vel (-5 -> 5) & thta (0 -> 6.28 [2pi])//no 6.28
+		// adds random arrow with length from (0.5 -> 1.5) vel (-5 -> 5) & thta (0 -> 6.28 [2M_PI])//no 6.28
 	}
 	void update(int freq) {
 		if (!train.empty()) {
@@ -281,7 +290,7 @@ public:
 				gl::drawStrokedCircle(ppm*Vec2f(train[i].pos.X, train[i].pos.Y), ppm*train[i].length);
 			}
 		}
-		if (!coords.empty()) {
+		if (!coords.empty() && pointDraw) {
 			for (int i = 0; i < coords.size(); i++) {
 				gl::color(0, 0.5, 1);//light blue
 				gl::drawSolidCircle(ppm*Vec2f(coords[i].re + initP.X, coords[i].im + initP.Y), 5);
@@ -308,6 +317,7 @@ class FourierDrawApp : public AppNative {
 	drawing d;
 	float dt = 600;// 60hz refresh rate
 	int freq = 1;
+	ci::gl::Texture picture;
 private:
 	// Change screen resolution
 	int mScreenWidth, mScreenHeight;
@@ -334,11 +344,12 @@ void FourierDrawApp::getScreenResolution(int& width, int& height) {
 	width = rDesktop.right;
 	height = rDesktop.bottom;
 }
-void FourierDrawApp::setup()
-{
+void FourierDrawApp::setup(){
 	srand(time(NULL));//seeds random number generator
 	mFont = Font("Arial", 45);//fixed custom font
 	mTextureFont = gl::TextureFont::create(mFont);
+	//picture = gl::Texture(loadImage(loadAsset("scotty.png")));
+
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
 	//d.fileInit();//first drawn 
 	d.fourierInit();
@@ -375,6 +386,9 @@ void FourierDrawApp::keyDown(KeyEvent event) {
 	if (event.getChar() == 'h') {
 		d.hide = !d.hide;
 	}
+	if (event.getChar() == 'j') {
+		d.pointDraw = !d.pointDraw;
+	}
 
 }
 void FourierDrawApp::update()
@@ -392,7 +406,6 @@ void FourierDrawApp::drawFontText(float text, vec3 pos) {
 	mTextureFont->drawString(PRINT, Vec2f(pos.X, pos.Y + 20));
 	gl::color(1, 1, 1);
 }
-
 void FourierDrawApp::draw()
 {
 	gl::enableAlphaBlending();//good for transparent images
@@ -407,7 +420,7 @@ void FourierDrawApp::draw()
 	drawFontText(getAverageFps(), vec3(getWindowWidth() - 130, 10));
 
 	gl::drawString("RefRt: ", Vec2f(getWindowWidth() - 250, 50), Color(0, 1, 0), Font("Arial", 45));
-	drawFontText(d.train.size()/(2*pi)*freq, vec3(getWindowWidth() - 130, 50));
+	drawFontText(d.train.size()/(2*M_PI)*freq, vec3(getWindowWidth() - 130, 50));
 }
 
 CINDER_APP_NATIVE( FourierDrawApp, RendererGl )

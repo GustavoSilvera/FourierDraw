@@ -16,7 +16,7 @@ Font mFont;//custom font for optimized drawing
 gl::TextureFontRef mTextureFont;//custom opengl::texture
 std::ofstream scriptFile;
 //typedef std::pair<float, float> complex;
-
+#define c complex
 static float sqr(float x) { return x * x; }
 static inline float toDeg(float rad) { return (rad * 180 / pi); }
 static inline float toRad(float deg) { return (deg * pi / 180); }
@@ -107,7 +107,7 @@ public:
 		float real, imag, freq, phase, amplitude;
 	};
 	struct complex {
-		complex(float r, float i) : re(r), im(-i) {}
+		complex(double r, double i) : re(r), im(-i) {}
 		float re, im;//real and imaginary components
 		complex mult(complex a) {//MAKE THIS INTO CLASS FUNCTION
 			float re_new = a.re*re - a.im*im;//i^2 = -1
@@ -115,7 +115,7 @@ public:
 			return(complex{ re_new, im_new });
 		}
 		complex operator* (float scalar) {//MAKE THIS INTO CLASS FUNCTION
-			return(complex{ scalar*re, scalar*im});
+			return(complex{ scalar*re, -scalar*im});
 		}
 		void add(complex a) {//not good ood but owell...
 			re += a.re;
@@ -130,17 +130,17 @@ public:
 	};
 	std::vector<fourierElements> discreteFourierTransform(std::vector<complex> x) {
 		std::vector<fourierElements> X;
-		const float N = x.size();
+		const float N = x.size();//accuracy??
 		for (int k = 0; k < N; k++) {
-			complex sum{ 0, 0 };
+			complex sum{ 0, 0 };//complex number final
 			for (int n = 0; n < N; n++) {
-				float phi = (2 * pi*k*n) / N;
-				const complex c { cos(phi), -sin(phi) };
-				sum.add( x[n].mult(c) );
+				float phi = (2 * pi*k*n) / N;//constant for angular velocity
+				const complex c { cos(phi), -sin(phi) };//cos and sin component
+				sum.add( x[n].mult(c) );//multiply cos & sin comp by original complex
 			}
 			sum.re = sum.re / N;
 			sum.im = sum.im / N;
-			float freq = k;
+			float freq = -k;
 			float phase = sum.angle();
 			float amplitude = sum.magnitude();
 			X.push_back(fourierElements{sum.re, sum.im, freq, phase, amplitude});
@@ -166,14 +166,33 @@ public:
 	}
 	std::vector<complex> coords;
 	void fourierInit() {
-		coords = {
-
-			/*complex{ 3, 0 }, complex{ 0, 1 }, complex{ -3, 0 }, complex{ 0, -1 },
-			complex{ 4, 0 }, complex{ 0, 2 }, complex{ -4, 0 }, complex{ 0, -2 },*/
+		std::vector<complex> v = {
+			c{ 0, 3 }, c{ 3, 5 }, c{ 4, 9.2 }, c{ 6, 8 }, c{ 8.1, 8 },
+			c{ 9.5, 7 }, c{ 11, 5.5 }, c{ 10, 3 }, c{ 9, 2.4 }, c{ 6.5, 2.5 },
+			c{ 6.5, 0 }, c{ 6, -2.6 }, c{ 6, -5 }, c{ 4, -6 }, c{ 1.3, -4.5 },
+			c{ -1, -4.1 }, c{ -3.5, -3.5 }, c{ -7, -6 }, c{ -9, -4 }, c{ -9, -2 },
+			c{ -6.5, 2 }, c{ -5, 4 }, c{ -3.2, 6 }, c{ -2, 5 }, c{ -3, 3 }
 		};
-		for (int i = 0; i < 100; i++) {
-			if (i % 5 != 0) continue;
-			coords.push_back(complex(cos(i/M_PI), sin(i/M_PI)) * (i / 20));
+		//interpolate points in btwn the fake points
+		const int n_interpolate = 5;//5 points in btwn
+		const int initSize = v.size();
+		for (int i = 0; i < initSize; i++) {
+			coords.push_back(v[i]);
+			float deltaX, deltaY;
+			if (i < initSize - 1) {
+				deltaX = (v[i + 1].re - v[i].re) / (n_interpolate + 1);
+				deltaY = (v[i + 1].im - v[i].im) / (n_interpolate + 1);
+			}
+			else {
+				deltaX = (v[0].re - v[i].re) / (n_interpolate + 1);
+				deltaY = (v[0].im - v[i].im) / (n_interpolate + 1);
+			}
+			for (int j = 1; j < n_interpolate + 1; j++) {
+				coords.push_back(complex{ v[i].re + deltaX * j, -(v[i].im + deltaY * j) });
+			}
+		}
+		for (int i = 0; i < coords.size(); i++) {
+			coords[i] = coords[i]*(0.33);//33% size
 		}
 		
 		std::vector<fourierElements> fourierY = discreteFourierTransform(coords);
@@ -201,11 +220,19 @@ public:
 		// adds random arrow with length from (0.5 -> 1.5) vel (-5 -> 5) & thta (0 -> 6.28 [2pi])//no 6.28
 	}
 	void update(float dt, int freq) {
+		const float dt2 = train.size()/(2*pi);
 		if (!train.empty()) {
 			for (int j = 0; j < freq; j++) {
 				last = train.size() - 1;
 				for (int i = 0; i < last + 1; i++) {
-					train[i].theta += train[i].velocity / dt;//updates position over time
+					train[i].theta += train[i].velocity / dt2;//updates position over time
+					while (train[i].theta > 2 * M_PI) {
+						train[i].theta -= 2 * M_PI;
+					}
+					while (train[i].theta < -2 * M_PI) {
+						train[i].theta += 2 * M_PI;
+					}
+
 					if (i > 0) train[i].pos = train[i - 1].tip();//ensures all positions are tip to tip
 				}
 				path.push_back(std::pair<vec3, vec3>(tartan(path.size()), train[last].tip()));
@@ -247,7 +274,8 @@ public:
 					ppm*Vec2f(train[i].length, 0)
 				);
 				glPopMatrix();//end of rotation code
-
+				gl::color(200 / 255.0, 200 / 255.0, 200 / 255.0);
+				gl::drawStrokedCircle(ppm*Vec2f(train[i].pos.X, train[i].pos.Y), ppm*train[i].length);
 			}
 		}
 		if (!coords.empty()) {
@@ -347,6 +375,8 @@ void FourierDrawApp::keyDown(KeyEvent event) {
 }
 void FourierDrawApp::update()
 {
+	/*static int counter = 0;
+	if(counter++ % 4 == 0)*/
 	d.update(dt, freq);
 }
 void FourierDrawApp::drawFontText(float text, vec3 pos) {
@@ -367,13 +397,13 @@ void FourierDrawApp::draw()
 
 	d.draw();
 	const vec3 initP{ 1, 1 };
-	gl::drawString(completeTxt, ppm*Vec2f(initP.X, initP.Y), Color(1, 1, 1), Font("Arial", 35));
+	//gl::drawString(completeTxt, ppm*Vec2f(initP.X, initP.Y), Color(1, 1, 1), Font("Arial", 35));
 
 	gl::drawString("FPS: ", Vec2f(getWindowWidth() - 250, 10), Color(0, 1, 0), Font("Arial", 45));
 	drawFontText(getAverageFps(), vec3(getWindowWidth() - 130, 10));
 
 	gl::drawString("RefRt: ", Vec2f(getWindowWidth() - 250, 50), Color(0, 1, 0), Font("Arial", 45));
-	drawFontText(dt*freq, vec3(getWindowWidth() - 130, 50));
+	drawFontText(d.train.size()/(2*pi)*freq, vec3(getWindowWidth() - 130, 50));
 }
 
 CINDER_APP_NATIVE( FourierDrawApp, RendererGl )

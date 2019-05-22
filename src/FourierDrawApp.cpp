@@ -52,7 +52,6 @@ public:
 	vec3 operator+(vec3 v) {
 		return vec3(X + v.X, Y + v.Y, Z + v.Z);
 	}
-private:
 };
 
 class arrow {
@@ -72,7 +71,33 @@ public:
 		return (pos + vec3(x, y));//adds arrowhead to initial 2D rectangular position
 	}
 };
-
+class complex {
+public:
+	complex(double r, double i) : re(r), im(-i) {}
+	float re, im;//real and imaginary components
+	complex mult(complex a) {//MAKE THIS INTO CLASS FUNCTION
+		float re_new = a.re*re - a.im*im;//i^2 = -1
+		float im_new = a.re*im + a.im*re;
+		return(complex{ re_new, im_new });
+	}
+	complex operator* (float scalar) {//MAKE THIS INTO CLASS FUNCTION
+		return(complex{ scalar*re, -scalar*im });
+	}
+	void add(complex a) {//not good ood but owell...
+		re += a.re;
+		im -= a.im;
+	}
+	float magnitude() {
+		return sqrt(sqr(re) + sqr(im));
+	}
+	float angle() {
+		return atan2(im, re);
+	}
+};
+struct f_elements {
+	float real, imag, freq, phase, amplitude;
+};
+typedef std::vector<f_elements> fourierSeries;
 class drawing {
 public:
 	std::vector<arrow> train;
@@ -80,13 +105,17 @@ public:
 	bool penDown = true;
 	int last;//index of final arrow
 	vec3 initP;
+	float dt = 60;
 	bool hide = false;
 	void addArrow(arrow a) {
 		train.push_back(a);
-		int i = train.size() - 1;//index for new arrow
-		completeTxt.append(std::to_string(i + 1) + "  len: " + std::to_string(train[i].length) + "   vel: " + std::to_string(train[i].velocity) + "\n");//kinda long precision but owell
+		int i = train.size() - 1;//index for newest arrow
+		string c = (std::to_string(i + 1) + "  len: " + std::to_string(train[i].length) + "   vel: " + std::to_string(train[i].velocity) + "\n");//kinda long precision but owell
+		scriptFile << c;//used for scripting
+		scriptFile = std::ofstream("script.txt", ofstream::app);
 	}
-	void init() {
+	void init() {//normie init
+		scriptFile = std::ofstream("script.txt");
 		addArrow(arrow{ 1, 1, 0, initP });
 	}
 	void fileInit() {
@@ -103,59 +132,31 @@ public:
 			addArrow(arrow{ (float)atof(radius), (float)atof(vel), (float)atof(angle) , initP});
 		}
 	}
-	struct fourierElements {
-		float real, imag, freq, phase, amplitude;
-	};
-	struct complex {
-		complex(double r, double i) : re(r), im(-i) {}
-		float re, im;//real and imaginary components
-		complex mult(complex a) {//MAKE THIS INTO CLASS FUNCTION
-			float re_new = a.re*re - a.im*im;//i^2 = -1
-			float im_new = a.re*im + a.im*re;
-			return(complex{ re_new, im_new });
-		}
-		complex operator* (float scalar) {//MAKE THIS INTO CLASS FUNCTION
-			return(complex{ scalar*re, -scalar*im});
-		}
-		void add(complex a) {//not good ood but owell...
-			re += a.re;
-			im -= a.im;
-		}
-		float magnitude() {
-			return sqrt(sqr(re) + sqr(im));
-		}
-		float angle() {
-			return atan2(im, re);
-		}
-	};
-	std::vector<fourierElements> discreteFourierTransform(std::vector<complex> x) {
-		std::vector<fourierElements> X;
+	fourierSeries discreteFourierTransform(std::vector<complex> x) {
+		fourierSeries X;
 		const float N = x.size();//accuracy??
 		for (int k = 0; k < N; k++) {
 			complex sum{ 0, 0 };//complex number final
 			for (int n = 0; n < N; n++) {
 				float phi = (2 * pi*k*n) / N;//constant for angular velocity
-				const complex c { cos(phi), -sin(phi) };//cos and sin component
-				sum.add( x[n].mult(c) );//multiply cos & sin comp by original complex
+				const complex c{ cos(phi), -sin(phi) };//cos and sin component
+				sum.add(x[n].mult(c));//multiply cos & sin comp by original complex
 			}
 			sum.re = sum.re / N;
 			sum.im = sum.im / N;
 			float freq = -k;
 			float phase = sum.angle();
 			float amplitude = sum.magnitude();
-			X.push_back(fourierElements{sum.re, sum.im, freq, phase, amplitude});
+			X.push_back(f_elements{ sum.re, sum.im, freq, phase, amplitude });
 		}
 		return X;
 	}
-	std::vector<fourierElements> sort(std::vector<fourierElements> f) {//simple bubble sort of amplitudes
+	fourierSeries sort(fourierSeries f) {//simple bubble sort of amplitudes
 		int size = f.size();
-		fourierElements temp;
-		for (int i = 0; i < size; i++)//fwds
-		{
-			for (int j = size - 1; j > i; j--)//bkwds
-			{
-				if (f[j].amplitude > f[j - 1].amplitude)
-				{
+		f_elements temp;
+		for (int i = 0; i < size; i++){//fwds
+			for (int j = size - 1; j > i; j--){//bkwds
+				if (f[j].amplitude > f[j - 1].amplitude){
 					temp = f[j - 1];
 					f[j - 1] = f[j];
 					f[j] = temp;
@@ -166,6 +167,7 @@ public:
 	}
 	std::vector<complex> coords;
 	void fourierInit() {
+		scriptFile.clear();
 		std::vector<complex> v = {
 			c{ 0, 3 }, c{ 3, 5 }, c{ 4, 9.2 }, c{ 6, 8 }, c{ 8.1, 8 },
 			c{ 9.5, 7 }, c{ 11, 5.5 }, c{ 10, 3 }, c{ 9, 2.4 }, c{ 6.5, 2.5 },
@@ -195,37 +197,38 @@ public:
 			coords[i] = coords[i]*(0.33);//33% size
 		}
 		
-		std::vector<fourierElements> fourierY = discreteFourierTransform(coords);
-		fourierY = sort(fourierY);//sorts in order of amplitudes (radii)
-		for (int i = 0; i < fourierY.size(); i++) {
-			float freq = fourierY[i].freq;//angular vel
-			float radius = fourierY[i].amplitude;//radius
-			float phase = fourierY[i].phase;//initial angle
+		fourierSeries fourier = discreteFourierTransform(coords);
+		fourier = sort(fourier);//sorts in order of amplitudes (radii)
+		for (int i = 0; i < fourier.size(); i++) {
+			float freq = fourier[i].freq;//angular vel
+			float radius = fourier[i].amplitude;//radius
+			float phase = fourier[i].phase;//initial angle
 			addArrow(arrow{ radius, freq, phase, initP });
 		}
+		dt = train.size() / (2 * pi);//NEED THIS
 
 	}
 	
 	void addRandom() {
 		vec3 newPos;
 		if (train.empty()) {
-			train.push_back(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0, initP));//floating point
+			newPos = initP;
 		}
 		else {
 			last = train.size() - 1;
-			train.push_back(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0, train[last].tip()));//floating point
+			newPos = train[last].tip();//floating point
 		}
+		addArrow(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0, newPos));//floating point
 		//train.push_back(arrow(0.5 + (rand() % 1), (rand() % 10) - 5, (rand() % 7)));//integer
 
 		// adds random arrow with length from (0.5 -> 1.5) vel (-5 -> 5) & thta (0 -> 6.28 [2pi])//no 6.28
 	}
-	void update(float dt, int freq) {
-		const float dt2 = train.size()/(2*pi);
+	void update(int freq) {
 		if (!train.empty()) {
 			for (int j = 0; j < freq; j++) {
 				last = train.size() - 1;
 				for (int i = 0; i < last + 1; i++) {
-					train[i].theta += train[i].velocity / dt2;//updates position over time
+					train[i].theta += train[i].velocity / dt;//updates position over time
 					while (train[i].theta > 2 * M_PI) {
 						train[i].theta -= 2 * M_PI;
 					}
@@ -339,6 +342,7 @@ void FourierDrawApp::setup()
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
 	//d.fileInit();//first drawn 
 	d.fourierInit();
+	//d.init();
 }
 void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {
@@ -377,7 +381,7 @@ void FourierDrawApp::update()
 {
 	/*static int counter = 0;
 	if(counter++ % 4 == 0)*/
-	d.update(dt, freq);
+	d.update(freq);
 }
 void FourierDrawApp::drawFontText(float text, vec3 pos) {
 	std::stringstream dummyText;

@@ -168,6 +168,7 @@ public:
 	float dt = 60;
 	bool hide = false;
 	bool pointDraw = true;
+	std::vector<complex> drawPoints;
 	void addArrow(arrow a) {
 		train.push_back(a);
 		int i = train.size() - 1;//index for newest arrow
@@ -194,9 +195,13 @@ public:
 		}
 	}
 	std::vector<complex> coords;
+	
 	void fourierInit() {
 		scriptFile.clear();
-		std::vector<complex> v = {
+		std::vector<complex> v;
+		if (!drawPoints.empty())
+			v = drawPoints;
+		else v = {//basic easy silhouette
 			c{ 0, 3 }, c{ 3, 5 }, c{ 4, 9.2 }, c{ 6, 8 }, c{ 8.1, 8 },
 			c{ 9.5, 7 }, c{ 11, 5.5 }, c{ 10, 3 }, c{ 9, 2.4 }, c{ 6.5, 2.5 },
 			c{ 6.5, 0 }, c{ 6, -2.6 }, c{ 6, -5 }, c{ 4, -6 }, c{ 1.3, -4.5 },
@@ -204,8 +209,8 @@ public:
 			c{ -6.5, 2 }, c{ -5, 4 }, c{ -3.2, 6 }, c{ -2, 5 }, c{ -3, 3 }
 		};
 		//interpolate points in btwn the fake points
-		coords = interpolateComplex(v, 5);//5 points
-		coords = scale(coords, 0.33);
+		coords = interpolateComplex(v, 2);//5 points
+		//coords = scale(coords, 0.33);
 		
 		fourierSeries fourier = discreteFourierTransform(coords);
 		fourier = sort(fourier);//sorts in order of amplitudes (radii)
@@ -228,9 +233,6 @@ public:
 			newPos = train[last].tip();//floating point
 		}
 		addArrow(arrow(0.5 + (rand() % 100) / 100.0, (rand() % 1000) / 100.0 - 5, (rand() % 628) / 100.0, newPos));//floating point
-		//train.push_back(arrow(0.5 + (rand() % 1), (rand() % 10) - 5, (rand() % 7)));//integer
-
-		// adds random arrow with length from (0.5 -> 1.5) vel (-5 -> 5) & thta (0 -> 6.28 [2M_PI])//no 6.28
 	}
 	void update(int freq) {
 		if (!train.empty()) {
@@ -293,7 +295,7 @@ public:
 		if (!coords.empty() && pointDraw) {
 			for (int i = 0; i < coords.size(); i++) {
 				gl::color(0, 0.5, 1);//light blue
-				gl::drawSolidCircle(ppm*Vec2f(coords[i].re + initP.X, coords[i].im + initP.Y), 5);
+				gl::drawSolidCircle(ppm*Vec2f(coords[i].re + initP.X, coords[i].im + initP.Y), 3);
 			}
 		}
 		if (penDown) {
@@ -317,7 +319,8 @@ class FourierDrawApp : public AppNative {
 	drawing d;
 	float dt = 600;// 60hz refresh rate
 	int freq = 1;
-	ci::gl::Texture picture;
+	ci::gl::Texture image;
+	bool drawImage = true;
 private:
 	// Change screen resolution
 	int mScreenWidth, mScreenHeight;
@@ -348,18 +351,17 @@ void FourierDrawApp::setup(){
 	srand(time(NULL));//seeds random number generator
 	mFont = Font("Arial", 45);//fixed custom font
 	mTextureFont = gl::TextureFont::create(mFont);
-	//picture = gl::Texture(loadImage(loadAsset("scotty.png")));
-
+	image = gl::Texture(loadImage(loadAsset("scotty.png")));
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
 	//d.fileInit();//first drawn 
-	d.fourierInit();
+	//d.fourierInit();
 	//d.init();
 }
 void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {
-		d.addRandom();
-		int i = d.train.size()-1;//index for new arrow
-		completeTxt.append(std::to_string(i + 1) + "  len: " + std::to_string(d.train[i].length) + "   vel: " + std::to_string(d.train[i].velocity) + "\n");//kinda long precision but owell
+		const float xPos = event.getX() / ppm - d.initP.X;
+		const float yPos = -event.getY() / ppm + d.initP.Y;
+		d.drawPoints.push_back(complex(xPos, yPos));
 	}
 	if (event.isRight()) {
 		d.path.clear();//clear current path
@@ -378,6 +380,9 @@ void FourierDrawApp::keyDown(KeyEvent event) {
 		if (!d.train.empty()) d.train[0].pos = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));//centers
 
 	}
+	if (event.getCode() == KeyEvent::KEY_DELETE) {
+		d.drawPoints.pop_back();
+	}
 	if (event.getCode() == KeyEvent::KEY_SPACE) if (freq != 0) freq = 0; else freq = 1;//toggles between play & pause
 	if (event.getChar() == 'r') {
 		d.train.clear();
@@ -389,6 +394,15 @@ void FourierDrawApp::keyDown(KeyEvent event) {
 	if (event.getChar() == 'j') {
 		d.pointDraw = !d.pointDraw;
 	}
+	if (event.getChar() == 'q'){
+		d.addRandom();
+	}
+	if (event.getChar() == 'f'){
+		d.fourierInit();
+		d.pointDraw = false;//much clutter
+		drawImage = false;
+	}
+
 
 }
 void FourierDrawApp::update()
@@ -409,13 +423,22 @@ void FourierDrawApp::drawFontText(float text, vec3 pos) {
 void FourierDrawApp::draw()
 {
 	gl::enableAlphaBlending();//good for transparent images
-	gl::clear( Color(0, 0, 63/255.0) );//dark blue
+	gl::clear(Color(0, 0, 63 / 255.0));//dark blue
 	gl::color(1, 1, 1);
 
 	d.draw();
 	const vec3 initP{ 1, 1 };
 	//gl::drawString(completeTxt, ppm*Vec2f(initP.X, initP.Y), Color(1, 1, 1), Font("Arial", 35));
-
+	if (drawImage){
+		gl::color(1, 1, 1);
+		gl::draw(image, Area(ppm*Vec2f(d.initP.X/2, d.initP.Y/2), Vec2f(d.initP.X*0.5*ppm + image.getWidth(), d.initP.Y*0.5*ppm + image.getHeight())));
+	}
+	if (d.pointDraw){
+		for (int i = 0; i < d.drawPoints.size(); i++){
+			gl::color(1, 0.5, 0);//light blue
+			gl::drawSolidCircle(ppm*Vec2f(d.drawPoints[i].re + d.initP.X, d.drawPoints[i].im + d.initP.Y), 5);
+		}
+	}
 	gl::drawString("FPS: ", Vec2f(getWindowWidth() - 250, 10), Color(0, 1, 0), Font("Arial", 45));
 	drawFontText(getAverageFps(), vec3(getWindowWidth() - 130, 10));
 

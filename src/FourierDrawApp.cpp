@@ -4,18 +4,27 @@
 #include "cinder/gl/Texture.h"
 #include <vector>
 #include <string.h>
+#include <algorithm>    // std::random_shuffle
+#include <cstdlib>      // std::rand, std::srand
+#include <iostream>     // std::cout
+#include <vector>       // std::vector
+#include <ctime>        // std::time
+#include <cstdlib>      // std::rand, std::srand
 #include <array>
+#include <iomanip>      // std::setprecision
 #include "cinder/gl/TextureFont.h"
 #include <fstream>
 #include <filesystem>
 using namespace ci;
 using namespace ci::app;
 using namespace std;
+int myrandom(int i) { return std::rand() % i; }
 
 float ppm = 100;//scale of how many pixels are in 1 SI Meter
 Font mFont;//custom font for optimized drawing
 gl::TextureFontRef mTextureFont;//custom opengl::texture
 std::ofstream scriptFile;
+std::ofstream imageFile;
 //typedef std::pair<float, float> complex;
 #define c complex
 #define NUM_INTERPOLATE 5
@@ -80,7 +89,7 @@ public:
 		return(complex{ re_new, im_new });
 	}
 	complex operator* (float scalar) {//MAKE THIS INTO CLASS FUNCTION
-		return(complex{ scalar*re, -scalar*im });
+		return(complex{ scalar*re, scalar*im });
 	}
 	void add(complex a) {//not good ood but owell...
 		re += a.re;
@@ -154,7 +163,7 @@ fourierSeries sort(fourierSeries f) {//simple bubble sort of amplitudes
 compVect scale(compVect v, const float scalar){
 	compVect scaled;
 	for (int i = 0; i < v.size(); i++) {
-		scaled.push_back (v[i] * (scalar));//33% size
+		scaled.push_back (v[i] * (scalar));
 	}
 	return scaled;
 }
@@ -172,8 +181,7 @@ public:
 	void addArrow(arrow a) {
 		train.push_back(a);
 		int i = train.size() - 1;//index for newest arrow
-		string c = (std::to_string(i + 1) + "  len: " + std::to_string(train[i].length) + "   vel: " + std::to_string(train[i].velocity) + "\n");//kinda long precision but owell
-		scriptFile << c;//used for scripting
+		scriptFile << std::to_string(i + 1) << "  len: " << std::setprecision(3) << train[i].length << "   vel: " << std::setprecision(3) << train[i].velocity << endl;
 		scriptFile = std::ofstream("script.txt", ofstream::app);
 	}
 	void init() {//normie init
@@ -189,7 +197,6 @@ public:
 			char radius[MAX_LINE];
 			char vel[MAX_LINE];
 			char angle[MAX_LINE];
-
 			sscanf(line, "%s %s %s", radius, vel, angle);
 			addArrow(arrow{ (float)atof(radius), (float)atof(vel), (float)atof(angle) , initP});
 		}
@@ -197,20 +204,31 @@ public:
 	std::vector<complex> coords;
 	
 	void fourierInit() {
+		std::ofstream ofs;
+		ofs.open("imagTXT.txt", std::ofstream::out | std::ofstream::trunc);
+		ofs.close();		
 		scriptFile.clear();
 		std::vector<complex> v;
-		if (!drawPoints.empty())
+		if (!drawPoints.empty()){
 			v = drawPoints;
+			imageFile.clear();
+			for (int i = 0; i < drawPoints.size(); i++){
+				imageFile << "c{ " << std::setprecision(3) << drawPoints[i].re << ", " << std::setprecision(3) << drawPoints[i].im << "}, ";
+				imageFile = std::ofstream("imagTXT.txt", ofstream::app);
+			}
+		}
 		else v = {//basic easy silhouette
-			c{ 0, 3 }, c{ 3, 5 }, c{ 4, 9.2 }, c{ 6, 8 }, c{ 8.1, 8 },
-			c{ 9.5, 7 }, c{ 11, 5.5 }, c{ 10, 3 }, c{ 9, 2.4 }, c{ 6.5, 2.5 },
-			c{ 6.5, 0 }, c{ 6, -2.6 }, c{ 6, -5 }, c{ 4, -6 }, c{ 1.3, -4.5 },
-			c{ -1, -4.1 }, c{ -3.5, -3.5 }, c{ -7, -6 }, c{ -9, -4 }, c{ -9, -2 },
-			c{ -6.5, 2 }, c{ -5, 4 }, c{ -3.2, 6 }, c{ -2, 5 }, c{ -3, 3 }
+			c{ -0.1, 0.39 }, c{ 0, 0.36 }, c{ 0.09, 0.32 }, c{ 0.16, 0.3 }, c{ 0.23, 0.28 }, c{ 0.31, 0.22 }, c{ 0.36, 0.18 }, c{ 0.44, 0.15 }, c{ 0.47, 0.08 }, c{ 0.52, -0.01 }, c{ 0.54, -0.06 }, c{ 0.6, -0.13 }, c{ 0.64, -0.17 }, c{ 0.69, -0.25 }, c{ 0.73, -0.33 }, c{ 0.76, -0.35 }, c{ 0.79, -0.43 }, c{ 0.82, -0.51 }, c{ 0.8, -0.58 }, c{ 0.76, -0.67 }, c{ 0.76, -0.76 }, c{ 0.81, -0.79 }, c{ 0.87, -0.83 }, c{ 0.9, -0.91 }, c{ 0.89, -0.99 }, c{ 0.89, -1.05 }, c{ 0.88, -1.15 }, c{ 0.88, -1.25 }, c{ 0.87, -1.33 }, c{ 0.92, -1.27 }, c{ 0.96, -1.24 }, c{ 0.98, -1.18 }, c{ 1.03, -1.13 }, c{ 1.06, -1.07 }, c{ 1.1, -1.13 }, c{ 1.15, -1.14 }, c{ 1.2, -1.1 }, c{ 1.23, -1.04 }, c{ 1.26, -0.98 }, c{ 1.32, -0.99 }, c{ 1.4, -1.01 }, c{ 1.47, -1 }, c{ 1.54, -0.98 }, c{ 1.6, -0.97 }, c{ 1.63, -1.03 }, c{ 1.7, -1.06 }, c{ 1.74, -1.09 }, c{ 1.78, -1.11 }, c{ 1.8, -1.05 }, c{ 1.87, -1.05 }, c{ 1.92, -1.05 }, c{ 1.99, -1.05 }, c{ 2.04, -1.01 }, c{ 2.1, -0.99 }, c{ 2.16, -0.95 }, c{ 2.16, -0.91 }, c{ 2.1, -0.89 }, c{ 2.03, -0.9 }, c{ 1.98, -0.89 }, c{ 1.94, -0.86 }, c{ 1.94, -0.83 }, c{ 1.99, -0.79 }, c{ 2.04, -0.76 }, c{ 2.11, -0.73 }, c{ 2.16, -0.71 }, c{ 2.23, -0.7 }, c{ 2.29, -0.67 }, c{ 2.34, -0.65 }, c{ 2.4, -0.63 }, c{ 2.46, -0.62 }, c{ 2.51, -0.6 }, c{ 2.56, -0.59 }, c{ 2.61, -0.56 }, c{ 2.66, -0.51 }, c{ 2.67, -0.45 }, c{ 2.61, -0.41 }, c{ 2.6, -0.33 }, c{ 2.57, -0.26 }, c{ 2.52, -0.19 }, c{ 2.5, -0.13 }, c{ 2.5, -0.06 }, c{ 2.5, 0.01 }, c{ 2.43, -0 }, c{ 2.34, 0.02 }, c{ 2.3, 0.05 }, c{ 2.28, 0.09 }, c{ 2.24, 0.14 }, c{ 2.19, 0.11 }, c{ 2.14, 0.18 }, c{ 2.12, 0.25 }, c{ 2.12, 0.31 }, c{ 2.07, 0.37 }, c{ 2.02, 0.41 }, c{ 1.94, 0.38 }, c{ 1.9, 0.32 }, c{ 1.84, 0.29 }, c{ 1.76, 0.29 }, c{ 1.74, 0.22 }, c{ 1.72, 0.15 }, c{ 1.7, 0.08 }, c{ 1.63, 0.05 }, c{ 1.57, -0 }, c{ 1.54, 0.07 }, c{ 1.52, 0.12 }, c{ 1.49, 0.17 }, c{ 1.44, 0.23 }, c{ 1.42, 0.31 }, c{ 1.41, 0.39 }, c{ 1.39, 0.46 }, c{ 1.39, 0.49 }, c{ 1.39, 0.52 }, c{ 1.39, 0.62 }, c{ 1.39, 0.67 }, c{ 1.4, 0.73 }, c{ 1.4, 0.81 }, c{ 1.4, 0.87 }, c{ 1.4, 0.94 }, c{ 1.4, 1 }, c{ 1.37, 1.09 }, c{ 1.35, 1.18 }, c{ 1.35, 1.25 }, c{ 1.34, 1.34 }, c{ 1.32, 1.41 }, c{ 1.32, 1.47 }, c{ 1.29, 1.54 }, c{ 1.28, 1.6 }, c{ 1.25, 1.67 }, c{ 1.2, 1.7 }, c{ 1.14, 1.73 }, c{ 1.11, 1.81 }, c{ 1.1, 1.9 }, c{ 1.1, 1.97 }, c{ 1.13, 2.03 }, c{ 1.15, 2.1 }, c{ 1.12, 2.13 }, c{ 1.08, 2.17 }, c{ 1.08, 2.23 }, c{ 1.1, 2.24 }, c{ 1.16, 2.3 }, c{ 1.22, 2.35 }, c{ 1.27, 2.41 }, c{ 1.22, 2.45 }, c{ 1.14, 2.45 }, c{ 1.08, 2.5 }, c{ 0.98, 2.51 }, c{ 0.92, 2.52 }, c{ 0.83, 2.52 }, c{ 0.73, 2.52 }, c{ 0.66, 2.52 }, c{ 0.6, 2.48 }, c{ 0.52, 2.43 }, c{ 0.46, 2.35 }, c{ 0.38, 2.3 }, c{ 0.3, 2.24 }, c{ 0.3, 2.13 }, c{ 0.27, 2.05 }, c{ 0.22, 2.01 }, c{ 0.16, 2.01 }, c{ 0.1, 2.02 }, c{ 0.05, 1.98 }, c{ 0, 2.01 }, c{ -0.05, 1.95 }, c{ -0.09, 2.02 }, c{ -0.15, 1.95 }, c{ -0.18, 1.99 }, c{ -0.25, 1.94 }, c{ -0.3, 1.99 }, c{ -0.36, 1.95 }, c{ -0.42, 1.99 }, c{ -0.46, 1.93 }, c{ -0.55, 1.95 }, c{ -0.6, 1.91 }, c{ -0.65, 1.93 }, c{ -0.71, 1.91 }, c{ -0.76, 1.96 }, c{ -0.8, 1.89 }, c{ -0.85, 1.91 }, c{ -0.89, 1.89 }, c{ -0.96, 1.89 }, c{ -1.02, 1.79 }, c{ -1.08, 1.74 }, c{ -1.14, 1.68 }, c{ -1.19, 1.71 }, c{ -1.26, 1.73 }, c{ -1.34, 1.73 }, c{ -1.4, 1.78 }, c{ -1.45, 1.81 }, c{ -1.5, 1.85 }, c{ -1.56, 1.95 }, c{ -1.61, 1.99 }, c{ -1.62, 2.07 }, c{ -1.7, 2.07 }, c{ -1.74, 2.12 }, c{ -1.78, 2.18 }, c{ -1.84, 2.24 }, c{ -1.88, 2.31 }, c{ -1.9, 2.39 }, c{ -1.9, 2.45 }, c{ -1.95, 2.47 }, c{ -2.04, 2.5 }, c{ -2.12, 2.52 }, c{ -2.21, 2.53 }, c{ -2.3, 2.53 }, c{ -2.36, 2.51 }, c{ -2.43, 2.48 }, c{ -2.5, 2.41 }, c{ -2.55, 2.33 }, c{ -2.59, 2.28 }, c{ -2.64, 2.18 }, c{ -2.54, 2.17 }, c{ -2.56, 2.09 }, c{ -2.62, 2.03 }, c{ -2.66, 1.96 }, c{ -2.66, 1.85 }, c{ -2.62, 1.77 }, c{ -2.62, 1.65 }, c{ -2.58, 1.59 }, c{ -2.54, 1.53 }, c{ -2.51, 1.49 }, c{ -2.47, 1.45 }, c{ -2.45, 1.37 }, c{ -2.43, 1.3 }, c{ -2.44, 1.19 }, c{ -2.38, 1.13 }, c{ -2.34, 1.03 }, c{ -2.3, 0.95 }, c{ -2.26, 0.93 }, c{ -2.2, 0.85 }, c{ -2.15, 0.81 }, c{ -2.09, 0.77 }, c{ -2.05, 0.71 }, c{ -2.02, 0.67 }, c{ -1.96, 0.63 }, c{ -1.88, 0.59 }, c{ -1.78, 0.55 }, c{ -1.75, 0.5 }, c{ -1.7, 0.46 }, c{ -1.65, 0.4 }, c{ -1.63, 0.32 }, c{ -1.6, 0.23 }, c{ -1.58, 0.13 }, c{ -1.56, 0.04 }, c{ -1.53, -0.01 }, c{ -1.49, -0.07 }, c{ -1.46, -0.16 }, c{ -1.38, -0.23 }, c{ -1.34, -0.29 }, c{ -1.29, -0.36 }, c{ -1.23, -0.41 }, c{ -1.16, -0.45 }, c{ -1.09, -0.48 }, c{ -1.02, -0.53 }, c{ -0.96, -0.56 }, c{ -0.91, -0.59 }, c{ -0.88, -0.57 }, c{ -0.91, -0.53 }, c{ -0.96, -0.45 }, c{ -1, -0.38 }, c{ -1.04, -0.33 }, c{ -1.06, -0.29 }, c{ -1.12, -0.25 }, c{ -1.16, -0.21 }, c{ -1.2, -0.15 }, c{ -1.24, -0.09 }, c{ -1.28, -0 }, c{ -1.3, 0.07 }, c{ -1.32, 0.17 }, c{ -1.32, 0.23 }, c{ -1.32, 0.28 }, c{ -1.27, 0.32 }, c{ -1.2, 0.34 }, c{ -1.12, 0.37 }, c{ -1.03, 0.41 }, c{ -0.95, 0.41 }, c{ -0.88, 0.43 }, c{ -0.78, 0.42 }, c{ -0.72, 0.4 }, c{ -0.63, 0.4 }, c{ -0.56, 0.39 }, c{ -0.5, 0.39 }, c{ -0.44, 0.38 }, c{ -0.34, 0.39 }, c{ -0.26, 0.39 }
 		};
+		//std::random_shuffle(v.begin(), v.end(), myrandom);
+		/*for (int i = 0; i < v.size(); i++){
+			imageFile << "c{ " << std::setprecision(3) << v[i].re << ", " << std::setprecision(3) << -v[i].im << "}, ";
+			if (i % 50 == 0) imageFile << "\n";
+			imageFile = std::ofstream("imagTXT.txt", ofstream::app);
+		}*/
 		//interpolate points in btwn the fake points
 		coords = interpolateComplex(v, 2);//5 points
-		//coords = scale(coords, 0.33);
+		coords = scale(coords, 1);
 		
 		fourierSeries fourier = discreteFourierTransform(coords);
 		fourier = sort(fourier);//sorts in order of amplitudes (radii)
@@ -351,8 +369,9 @@ void FourierDrawApp::setup(){
 	srand(time(NULL));//seeds random number generator
 	mFont = Font("Arial", 45);//fixed custom font
 	mTextureFont = gl::TextureFont::create(mFont);
-	image = gl::Texture(loadImage(loadAsset("scotty.png")));
+	image = gl::Texture(loadImage(loadAsset("scotty2.png")));
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
+	imageFile.clear();
 	//d.fileInit();//first drawn 
 	//d.fourierInit();
 	//d.init();
@@ -360,7 +379,7 @@ void FourierDrawApp::setup(){
 void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {
 		const float xPos = event.getX() / ppm - d.initP.X;
-		const float yPos = -event.getY() / ppm + d.initP.Y;
+		const float yPos = event.getY() / ppm - d.initP.Y;
 		d.drawPoints.push_back(complex(xPos, yPos));
 	}
 	if (event.isRight()) {
@@ -436,7 +455,7 @@ void FourierDrawApp::draw()
 	if (d.pointDraw){
 		for (int i = 0; i < d.drawPoints.size(); i++){
 			gl::color(1, 0.5, 0);//light blue
-			gl::drawSolidCircle(ppm*Vec2f(d.drawPoints[i].re + d.initP.X, d.drawPoints[i].im + d.initP.Y), 5);
+			gl::drawSolidCircle(ppm*Vec2f(d.drawPoints[i].re + d.initP.X, -d.drawPoints[i].im + d.initP.Y), 5);
 		}
 	}
 	gl::drawString("FPS: ", Vec2f(getWindowWidth() - 250, 10), Color(0, 1, 0), Font("Arial", 45));

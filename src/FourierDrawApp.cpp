@@ -342,7 +342,6 @@ private:
 	int mScreenWidth, mScreenHeight;
 	float initWidth, initHeight;
 	void getScreenResolution(int& width, int& height);
-	
 };
 void FourierDrawApp::prepareSettings(Settings *settings) {
 	//! setup our window
@@ -367,7 +366,7 @@ void FourierDrawApp::setup(){
 	srand(time(NULL));//seeds random number generator
 	mFont = Font("Arial", 45);//fixed custom font
 	mTextureFont = gl::TextureFont::create(mFont);
-	image = gl::Texture(loadImage(loadAsset("scotty2.png")));
+	image = gl::Texture(loadImage(loadAsset("scotty.png")));
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
 	imageFile.clear();
 	//d.fileInit();//first drawn 
@@ -399,6 +398,9 @@ void FourierDrawApp::keyDown(KeyEvent event) {
 	}
 	if (event.getCode() == KeyEvent::KEY_DELETE) {
 		d.drawPoints.pop_back();
+	}
+	if (event.getChar() == 'p'){
+		d.train.pop_back();
 	}
 	if (event.getCode() == KeyEvent::KEY_SPACE) if (freq != 0) freq = 0; else freq = 1;//toggles between play & pause
 	if (event.getChar() == 'r') {
@@ -460,7 +462,10 @@ void FourierDrawApp::draw()
 	drawFontText(getAverageFps(), vec3(getWindowWidth() - 130, 10));
 
 	gl::drawString("RefRt: ", Vec2f(getWindowWidth() - 250, 50), Color(0, 1, 0), Font("Arial", 45));
-	drawFontText(d.train.size()/(2*M_PI)*freq, vec3(getWindowWidth() - 130, 50));
+	drawFontText(d.train.size() / (2 * M_PI)*freq, vec3(getWindowWidth() - 130, 50));
+
+	gl::drawString("Num: ", Vec2f(getWindowWidth() - 250, 90), Color(1, 1, 1), Font("Arial", 45));
+	drawFontText(d.train.size(), vec3(getWindowWidth() - 130, 90));
 }
 
 CINDER_APP_NATIVE( FourierDrawApp, RendererGl )

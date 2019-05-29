@@ -1,6 +1,7 @@
 #include "cinder/app/AppNative.h"
 #include "cinder/gl/gl.h"
 #include "cinder/ImageIo.h"
+#include "cinder/Surface.h"
 #include "cinder/gl/Texture.h"
 #include <vector>
 #include <string.h>
@@ -227,7 +228,7 @@ public:
 		
 		fourierSeries fourier = discreteFourierTransform(coords);
 		fourier = sort(fourier);//sorts in order of amplitudes (radii)
-		const int NUM_ARROWS = 100;
+		const int NUM_ARROWS = 1500;
 		for (int i = 0; i < NUM_ARROWS; i++) {
 			if (i < fourier.size()){
 				float freq = fourier[i].freq;//angular vel
@@ -238,6 +239,25 @@ public:
 		}
 		dt = fourier.size() / (2 * M_PI);//NEED THIS
 
+	}
+	bool coloured(vec3 pixel, const int pThresh = 30){
+		return (pixel.X > pThresh || pixel.Y > pThresh || pixel.Z > pThresh);
+	}
+	void autoInit(std::vector<std::vector<vec3>> imagePix){
+		for (int i = 0; i < imagePix.size(); i++){//through every line
+			for (int j = 0; j < imagePix[0].size(); j++){//through every pixel
+				bool edge = (i == 0 || i == imagePix.size() || j == 0 || j == imagePix.size());
+				if (coloured(imagePix[i][j]) && !edge){
+					if (!coloured(imagePix[i - 1][j]) /*top*/ || !coloured(imagePix[i + 1][j]) /*bottom*/ ||
+						!coloured(imagePix[i][j - 1]) /*left*/ || !coloured(imagePix[i][j + 1]) /*right*/)
+					{
+						float xPos = j / ppm - initP.X / 2;
+						float yPos = i / ppm - initP.Y / 2;
+						drawPoints.push_back(complex(xPos, yPos));
+					}
+				}
+			}
+		}
 	}
 	void addRandom() {
 		vec3 newPos;
@@ -337,6 +357,7 @@ class FourierDrawApp : public AppNative {
 	int freq = 1;
 	ci::gl::Texture image;
 	bool drawImage = true;
+	std::vector<std::vector<vec3>> imagePix;//vetor of vectors for pixel to rectangular coords
 private:
 	// Change screen resolution
 	int mScreenWidth, mScreenHeight;
@@ -372,6 +393,19 @@ void FourierDrawApp::setup(){
 	//d.fileInit();//first drawn 
 	//d.fourierInit();
 	//d.init();
+	//Surface::Iter iter = surface->getIter(image);
+	Surface myPicture = loadImage(loadAsset("scotty.png"));//WORKS
+	Area area(0, 0, image.getWidth(), image.getHeight());
+	Surface::Iter iter = myPicture.getIter(area);
+	while (iter.line()) {
+		std::vector<vec3> linePix;
+		while (iter.pixel()) {
+			vec3 RGB = vec3(iter.r(), iter.g(), iter.b());
+			linePix.push_back(RGB);
+		}
+		imagePix.push_back(linePix);
+	}
+	d.autoInit(imagePix);
 }
 void FourierDrawApp::mouseDown(MouseEvent event) {
 	if (event.isLeft()) {

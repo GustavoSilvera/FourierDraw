@@ -111,7 +111,7 @@ typedef std::vector<complex> compVect;
 typedef std::vector<f_elements> fourierSeries;
 fourierSeries discreteFourierTransform(compVect x) {
 	fourierSeries X;
-	const float N = x.size();//accuracy??
+	const float N = x.size();
 	for (int k = 0; k < N; k++) {
 		complex sum{ 0, 0 };//complex number final
 		for (int n = 0; n < N; n++) {
@@ -236,14 +236,16 @@ public:
 			imageFile = std::ofstream("imagTXT.txt", ofstream::app);
 		}
 		//interpolate points in btwn the fake points
-		coords = interpolateComplex(v, 2);//interpolated points//LOOK UP SPLINES
+		coords = interpolateComplex(v, 0);//interpolated points//LOOK UP SPLINES
 		coords = scale(coords, 1);
 		
 		fourierSeries fourier = discreteFourierTransform(coords);
-		fourier = sort(fourier);//sorts in order of amplitudes (radii)
 		const int NUM_ARROWS = 1000;
-		for (int i = 0; i < NUM_ARROWS; i++) {
-			if (i < fourier.size()){
+		arrow com = arrow{ fourier[0].amplitude, fourier[0].freq, fourier[0].phase, initP };
+		initP = com.tip();//sets initP to center of mass
+		fourier = sort(fourier);//sorts in order of amplitudes (radii)
+		for (int i = 0; i < NUM_ARROWS + 1; i++) {//dont care abt 0th arrow, should be the new initP
+			if (i < fourier.size() && fourier[i].freq != 0){
 				float freq = fourier[i].freq;//angular vel
 				float radius = fourier[i].amplitude;//radius
 				float phase = fourier[i].phase;//initial angle
@@ -253,18 +255,19 @@ public:
 		dt = fourier.size() / (2 * M_PI);//NEED THIS
 
 	}
-	bool coloured(vec3 pixel, const int pThresh = 20){
-		return (pixel.X > pThresh || pixel.Y > pThresh || pixel.Z > pThresh);
+	bool coloured(Vec4f pixel, const int pThresh = 20){
+		bool RGB_col = (pixel.x > pThresh || pixel.y > pThresh || pixel.z > pThresh);
+		bool alpha = (pixel.w > 0.5);
+		return (alpha || RGB_col);
 	}
 	float calcDist2(complex i, complex j) {
 		float deltaX = i.re - j.re;
 		float deltaY = i.im - j.im;
-		return (sqr(deltaX) + sqr(deltaY));//pythag
+		return (sqr(deltaX) + sqr(deltaY));//pythag (without sqrt)
 	}
 	std::vector<complex> sortf(std::vector<complex> d) {
 		//now have to SORT all the pixels
 		std::vector<complex> sortedPoints;
-#if 1
 		int start_index = 0;
 		std::swap(d[start_index], d.back());
 		sortedPoints.push_back(d.back());
@@ -285,33 +288,12 @@ public:
 			if (dist2 < sqr(0.1)) sortedPoints.push_back(d.back());
 			d.resize(d.size() - 1);
 		}
-#else
-		sortedPoints.push_back(d[0]);//gets first point
-		std::vector<int> usedIndex;
-		usedIndex.push_back(0);
-		const int dSize = d.size();
-		for (int i = 0; i < dSize; i++) {
-			int closestInd = usedIndex[usedIndex.size() - 1];//individually closest one
-			float dist = 100;//arbitratrily large error
-			for (int j = 0; j < dSize; j++) {//calculate all distances(could probably be better to only calculate nearby distances)
-				if (usedIndex.empty() || std::find(usedIndex.begin(), usedIndex.end(), j) == usedIndex.end()) {//j not already used (used vector "!contains")
-					float newDist = calcDist(d[closestInd], d[j]);
-					if (newDist < dist) {//dist from i to j
-						closestInd = j;
-						dist = newDist;
-					}
-				}
-			}
-			usedIndex.push_back(closestInd);//good index
-			sortedPoints.push_back(drawPoints[closestInd]);
-		}
-#endif
 		return sortedPoints;
 	}
-	void autoInit(std::vector<std::vector<vec3>> imagePix){
+	void autoInit(std::vector<std::vector<Vec4f>> imagePix){
 		for (int i = 1; i < imagePix.size(); i++){//through every line (starts after edge)
 			for (int j = 1; j < imagePix[0].size(); j++){//through every pixel (starts after edge)
-				bool edge = (i == imagePix.size()-1 || j == imagePix[0].size()-1);//not left or bottom edge
+				bool edge = (i == imagePix.size() || j == imagePix[0].size());//not left or bottom edge
 				if (coloured(imagePix[i][j]) && !edge){
 					if (!coloured(imagePix[i - 1][j]) /*top*/ || !coloured(imagePix[i + 1][j]) /*bottom*/ ||
 						!coloured(imagePix[i][j - 1]) /*left*/ || !coloured(imagePix[i][j + 1]) /*right*/)
@@ -425,7 +407,7 @@ class FourierDrawApp : public AppNative {
 	ci::gl::Texture image;
 	bool drawImage = true;
 	const float imScale = 1;
-	std::vector<std::vector<vec3>> imagePix;//vetor of vectors for pixel to rectangular coords
+	std::vector<std::vector<Vec4f>> imagePix;//vetor of vectors for pixel to rectangular coords
 private:
 	// Change screen resolution
 	int mScreenWidth, mScreenHeight;
@@ -461,15 +443,15 @@ void FourierDrawApp::setup(){
 	scriptFile.clear();
 	//surface & image
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
-	Surface myPicture = loadImage(loadAsset("test.png"));//WORKS
+	Surface myPicture = loadImage(loadAsset("people.png"));//WORKS
 	image = gl::Texture(myPicture);
 	//walk the pixels
 	Area area(0, 0, image.getWidth(), image.getHeight());
 	Surface::Iter iter = myPicture.getIter(area);
 	while (iter.line()) {
-		std::vector<vec3> linePix;
+		std::vector<Vec4f> linePix;
 		while (iter.pixel()) {
-			vec3 RGB = vec3(iter.r(), iter.g(), iter.b());
+			Vec4f RGB = Vec4f(iter.r(), iter.g(), iter.b(), iter.a());
 			linePix.push_back(RGB);
 		}
 		imagePix.push_back(linePix);
@@ -524,13 +506,8 @@ void FourierDrawApp::keyDown(KeyEvent event) {
 		d.pointDraw = false;//much clutter
 		drawImage = false;
 	}
-
-
 }
-void FourierDrawApp::update()
-{
-	/*static int counter = 0;
-	if(counter++ % 4 == 0)*/
+void FourierDrawApp::update(){
 	d.update(freq);
 }
 void FourierDrawApp::drawFontText(float text, vec3 pos) {

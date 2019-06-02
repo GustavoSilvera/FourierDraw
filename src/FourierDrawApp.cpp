@@ -290,12 +290,17 @@ public:
 		return sortedPoints;
 	}
 	void autoInit(std::vector<std::vector<Vec4f>> imagePix){
-		for (int i = 1; i < imagePix.size(); i++){//through every line (starts after edge)
-			for (int j = 1; j < imagePix[0].size(); j++){//through every pixel (starts after edge)
-				bool edge = (i == imagePix.size() || j == imagePix[0].size());//not left or bottom edge
+		const int height = imagePix.size();
+		const int width = imagePix[0].size();
+		for (int i = 1; i < height; i++){//through every line (starts after edge)
+			for (int j = 1; j < width; j++){//through every pixel (starts after edge)
+				bool edge = (i == height || j == width);//not left or bottom edge
 				if (coloured(imagePix[i][j]) && !edge){
-					if (!coloured(imagePix[i - 1][j]) /*top*/ || !coloured(imagePix[i + 1][j]) /*bottom*/ ||
-						!coloured(imagePix[i][j - 1]) /*left*/ || !coloured(imagePix[i][j + 1]) /*right*/)
+					if ( (!coloured(imagePix[i - 1][j])) ||	/*top*/
+						 (!coloured(imagePix[i + 1][j])) ||	/*bottom*/
+						 (!coloured(imagePix[i][j - 1])) ||	/*left*/
+						 (!coloured(imagePix[i][j + 1]))		/*right*/
+					   )
 					{
 						float xPos = j / ppm - initP.X / 2;
 						float yPos = i / ppm - initP.Y / 2;
@@ -303,7 +308,7 @@ public:
 					}
 				}
 			}
-		}
+		} 
 		//now have to SORT all the pixels
 		drawPoints = sortf(drawPoints);//updates drawPoints with new sorted ones
 	}
@@ -443,7 +448,7 @@ void FourierDrawApp::setup(){
 	scriptFile.clear();
 	//surface & image
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
-	Surface myPicture = loadImage(loadAsset("plaid.png"));//WORKS
+	Surface myPicture = loadImage(loadAsset("butterfly.png"));//WORKS
 	image = gl::Texture(myPicture);
 	//walk the pixels
 	Area area(0, 0, image.getWidth(), image.getHeight());

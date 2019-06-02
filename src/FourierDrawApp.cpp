@@ -256,9 +256,8 @@ public:
 
 	}
 	bool coloured(Vec4f pixel, const int pThresh = 20){
-		bool RGB_col = (pixel.x > pThresh || pixel.y > pThresh || pixel.z > pThresh);
-		bool alpha = (pixel.w > 0.5);
-		return (alpha || RGB_col);
+		bool RGB_col = (pixel.x > pThresh || pixel.y > pThresh || pixel.z > pThresh);//cant really do with black...has to be coloured
+		return (RGB_col);
 	}
 	float calcDist2(complex i, complex j) {
 		float deltaX = i.re - j.re;
@@ -384,9 +383,10 @@ public:
 			}
 		}
 		if (penDown) {
-			for (int i = 1; i < path.size(); i++) {//start @ 2nd to not worry abt vector end
-				gl::color(path[i - 1].first.X, path[i - 1].first.Y, path[i - 1].first.Z);//TARTAN
-				gl::drawLine(ppm*Vec2f(path[i - 1].second.X, path[i - 1].second.Y), ppm*Vec2f(path[i].second.X, path[i].second.Y));
+			for (int i = 0; i < path.size(); i++) {//start @ 2nd to not worry abt vector end
+				gl::color(path[i].first.X, path[i].first.Y, path[i].first.Z);//TARTAN
+				gl::drawSolidCircle(ppm*Vec2f(path[i].second.X, path[i].second.Y), 3);
+				//gl::drawLine(ppm*Vec2f(path[i - 1].second.X, path[i - 1].second.Y), ppm*Vec2f(path[i].second.X, path[i].second.Y));
 			}
 			gl::color(1, 1, 1);
 		}
@@ -443,7 +443,7 @@ void FourierDrawApp::setup(){
 	scriptFile.clear();
 	//surface & image
 	d.initP = vec3(getWindowWidth() / (2 * ppm), getWindowHeight() / (2 * ppm));
-	Surface myPicture = loadImage(loadAsset("people.png"));//WORKS
+	Surface myPicture = loadImage(loadAsset("plaid.png"));//WORKS
 	image = gl::Texture(myPicture);
 	//walk the pixels
 	Area area(0, 0, image.getWidth(), image.getHeight());

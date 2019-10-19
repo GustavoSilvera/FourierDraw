@@ -3,11 +3,11 @@ Graphical animation for Fourier Transform Series approximations of complex relat
 
 # Basically
   Imagine a single moon orbiting at a fixed angular velocity and radius. Now imagine another moon orbiting around that moon.
-  Now imagine another moon orbiting aound that moon orbiting around the first moon... and on and on and on...
+  Now imagine another moon orbiting around that moon orbiting around the first moon... and on and on and on...
   Now what if there was a pencil on the tip of the very last moon in the sequence? What kind of image would it draw?
   Well, by applying a [[Complex Fourier Transform Series](https://en.wikipedia.org/wiki/Fourier_series)] to the sequence, 
   it is possible to tweak the initial angles and velocities of all the 'moons' in order to match a nontrivial function, like a drawing outline.
-  Below I have a gallery of some examples of this program, where an image was downloaded and traced, and then the fourier series was used to outline it using ~800 moons.
+  Below I have a gallery of some examples of this program, where an image was downloaded and traced, and then the Fourier series was used to outline it using ~800 moons.
 
 ![](images/butterfly.gif) ![](images/chungus.gif) ![](images/GoPlaid.gif)  
 

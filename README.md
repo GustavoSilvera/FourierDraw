@@ -22,6 +22,8 @@ Graphical animation for Fourier Transform Series approximations of complex relat
 # Controls
   Press the **del** key to remove an 'orange dot' coordinate, and press **spacebar** to begin the moon orbiting as soon as the orange dots are placed.
 
+# YouTube Video
+
 [![Alt text](https://img.youtube.com/vi/VI8btEeCVeE/0.jpg)](https://www.youtube.com/watch?v=VI8btEeCVeE)\
 
 Youtube Link: https://www.youtube.com/watch?v=VI8btEeCVeE

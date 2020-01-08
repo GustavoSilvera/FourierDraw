@@ -21,7 +21,7 @@ using namespace ci::app;
 using namespace std;
 int myrandom(int i) { return std::rand() % i; }
 
-float ppm = 100;//scale of how many pixels are in 1 SI Meter
+const float ppm = 100;//scale of how many pixels are in 1 SI Meter
 Font mFont;//custom font for optimized drawing
 gl::TextureFontRef mTextureFont;//custom opengl::texture
 std::ofstream scriptFile;

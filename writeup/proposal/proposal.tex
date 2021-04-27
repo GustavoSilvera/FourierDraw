@@ -1,0 +1,101 @@
+\documentclass[12pt]{article}
+% \usepackage{fullpage}
+% \usepackage{amsmath,amsopn}
+% \usepackage{graphicx}
+% \usepackage{color}
+% \usepackage{verbatim}
+% \usepackage{setspace}
+% \usepackage{gensymb}
+% \usepackage{float}
+% \usepackage[normalem]{ulem}
+% \usepackage{hyperref}
+% %\usepackage[dvips,bookmarks=false,colorlinks,urlcolor=blue,pdftitle={
+% \usepackage{caption}
+% \usepackage{subcaption}
+% \usepackage{amsmath}
+% \usepackage{amssymb}
+% \usepackage{amsfonts}
+% \usepackage{amsthm}
+% \usepackage{comment}
+% \usepackage{xcolor}
+
+\usepackage[a4paper, total={7in, 9.5in}]{geometry}
+
+
+\begin{document}
+
+\begin{centering}
+    {\large 15-418 Parallel Computer Arch., Spring 2021\\}
+    \vspace{2ex}
+    {\LARGE Parallel Video Frame Interpolation\\}
+    \vspace{2ex}
+    {\large Due Date: Friday April 7, 2021 22:59 EST\\}
+\end{centering}
+
+\bigskip
+
+\paragraph{Group:} Elan Biswas(elanb), Gustavo Silvera(gsilvera)
+
+\section*{Summary:} 
+\par For our project, we plan on implementing and optimizing a video frame interpolation algorithm using \texttt{NVidia Cuda} GPUs and other parallel techniques from 15-418. We will provide metrics from the resulting optimization and measure the speedup compared to reference sequential implementations.  
+
+\section*{Background:}
+\par Interpolation algorithms primarily use adjacent frames in a video to construct an intermediate frame that could be interleaved in the video, increasing the number of frames-per-second relative to the original. We should have multiple avenues for parallelism that we can explore similarly to Assignment2. We are currently interested in parallelizing across pixels and across frames for our initial implementation. 
+\par The computer vision algorithms heavily rely on matrix operations that operate on entire frames of pixels at once, for an $(n \times m)$ resolution image this could likely be parallelized heavily. Additionally, since interpolation in different parts of the video would be completely independent (for simple algorithms) we should also be able to parallelize our algorithm accross multiple different frames concurrently.
+\par Finally, if we accomplish the above \texttt{cuda} implementation we'd also like to parallelize our host code with \texttt{OpenMP}, and eventually parallelize our algorithm further across several machines working independently and communicating through \texttt{MPI}.
+\par There is a wide variety of video interpolation algorithms that are more complex and have more sequential and memory-based dependencies. These complex algorithms produce more realistic results, at a cost of performance. For example, the \textit{quadratic video interpolation}$^1$ algorithm uses more than two frames to generate a single in-between frame by using motion data across a larger number of frames to more accurately represent non-uniform motion. Future work could include implementing these more memory-constrained algorithms and comparing their results and performance with our simpler approach.
+$~$\\
+1) https://arxiv.org/pdf/1911.00627.pdf
+
+\newpage
+
+\section*{The Challenge:}
+\par Within the per-frame computation in most computer vision algorithms for interpolation, it is difficult to parallelize completely across pixels because neighbouring pixels are often used. Communication across pixels would limit our parallelism due to memory accesses and adding sequential bottlenecks. To counteract this, we'll need to make sure that we have enough work to do in our \texttt{CUDA} kernels so that thread pipelining can take advantage of doing more work while waiting on the slow (GPU) device memory. 
+\par We also will be limited in the number of frames we can parallelize because individual frames could require large amounts of memory ($(n \times m \times 3)$ \texttt{float}'s for an rgb image) which could easily overflow the device memory for long videos. This may be an avenue where we could split up videos and process them in parallel (across multiple GPU-accelerated computers) with \texttt{MPI} communication at the beginning and end. 
+\par Additionally, if we get to implementing the more complicated algorithms, those require even more memory per interpolated-frame because they use more data than just the two adjacent frames. This would further constrain our already somewhat memory-constrained problem and benefit greatly by distributing work across GPU's with \texttt{MPI}.
+
+\section*{Resources:}
+\par In particular, we'll start by looking at a \textit{Phase-Based Frame Interpolation}$^1$ algorithm for its ease of implementation and potential for parallelism. This algorithm makes use of phase-based methods to represent motion of individual pixels instead of common methods such as Lagrangian optical flow correspondences.
+\par We won't be starting from a useful codebase because the only open-source implementations available are written in \texttt{python}, cpu-based, and ``highly un-optimized''$^2$ so we will be implementing the core algorithm from scratch. We will use this codebase$^2$ as a benchmark once ours is completed, and ideally ours will be orders magnitudes faster since it leverages the GPU and \texttt{c++}.
+\par Access to the Gates machines would be useful because we would like to use the \texttt{RTX 2080}'s onboard the machines. We may also consider using multiple (different) Gates machines at once in order to have multiple gpu devices working at once on separate \texttt{MPI} process instances. 
+$~$\\\\
+1) https://studios.disneyresearch.com/wp-content/uploads/2019/03/Phase-Based-Frame-Interpolation-for-Video.pdf\\
+2) https://github.com/justanhduc/Phase-based-Frame-Interpolation
+% \par There exist several video frame interpolation techniques varying from simple per-pixel averages to complex deep-convolutional networks. For this project, since we want to focus on the practical implementation aspects rather than heavy theory, we're aiming to use some relatively simple existing algorithms. These algorithms are widely used for increasing the frame rate/smoothness of video sequences that would otherwise look ``stuttery'' when played in slow-motion. 
+
+\section*{Goals and Deliverables:}
+\paragraph{Plan to achieve:}
+\par Ideally we could get a fully functional and correct implementation of the video interpolation algorithm working with GPU acceleration. We do not have metrics on our initial sequential implementation (since we have not started it yet), but should hope to achieve near-linear speedup in comparison. 
+\paragraph{Hope to achieve:}
+% \par Once the simple algorithm is complete, we will incorporate the complex algorithm to improve our final results but still maintain high performance. 
+\par Once the above is completed, we'd like to implement the \texttt{MPI} optimization to obtain further speedup across multiple GPU devices. 
+\paragraph{Presentation:}
+\par By the end of the semester, we'd like to present our project by showcasing some example videos of an original source (playing at 15fps for example) side by side to our interpolated/smoother render (ideally playing at 30+fps).
+
+\section*{Platform Choice:}
+\par We will be working with \texttt{C++} and \texttt{CUDA} on the Gates machines and \texttt{gsilvera}'s own \texttt{goosinator} machine which has an RTX 2080 super 8GB. If we get to the \texttt{MPI} implementation, we'd like to also have these machines work on the same video concurrently. 
+\par \texttt{C++} is a good choice for our project since it has clean integration with \texttt{CUDA}, \texttt{MPI}, and has many built-in data structures through the \texttt{std} libraries that we can make use of. Both group members are comfortable with \texttt{C++} and \texttt{CUDA} and \texttt{MPI} so we should not have many problems getting started.  
+
+\section*{Schedule:}
+
+\begin{center}
+	\begin{tabular}{ |c|c| } 
+		\hline
+		Week & Discussion \\
+		\hline
+		1 (4/4/21-4/10/21) & Project proposal \& understand \textit{phase-based interpolation} algorithm \\ 
+		\hline
+		2 (4/11/21-4/17/21) & Finish the sequential \texttt{C++} implementation as baseline benchmark\\
+		\hline
+		3 (4/18/21-4/24/21) & Parallelize the sequential implementation with \texttt{cuda}\\
+		\hline
+		4 (4/25/21-5/1/21) & Project checkpoint \& finish parallel algorithm with benchmarks\\
+		\hline
+		5 (5/2/21-5/8/21) & Work on MPI implementation and performance metrics\\
+		\hline
+		6 (5/9/21-5/15/21) & Final presentation \\
+		\hline
+	\end{tabular}\\
+\end{center}
+
+\end{document}

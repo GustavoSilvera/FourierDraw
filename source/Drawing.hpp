@@ -18,7 +18,7 @@ class Drawing
         DeltaTime = DT;
         PenDown = PD;
         I = I.Init(WindowSize);
-        InitialPosition = Vec2D(0, 0);
+        InitialPosition = Vec2D(0, 0); // WindowSize / 2;
         // first arrow
         AddArrow(Arrow(1, 1, 0, InitialPosition));
         // initialize all the arrows from the fourier transform
@@ -193,7 +193,7 @@ class Drawing
         Complex::ScaleBatch(Coordinates, 1);
         Coordinates = Complex::Interpolate(Coordinates, 0);
         FourierSeries F(Coordinates);
-        Arrow COM(F.Data[0].Amplitude, F.Data[0].Frequency, F.Data[0].Phase, Vec2D());
+        const Arrow COM(F.Data[0].Amplitude, F.Data[0].Frequency, F.Data[0].Phase, Vec2D());
         // dont care abt 0th arrow, should be the new initP
         InitialPosition = COM.Tip(); // set Initial position to COM's tip
         F.BubbleSort();
@@ -234,10 +234,11 @@ class Drawing
     void Render()
     {
         /// TODO: add thickness
+        const double ppm = 10;
         for (int i = 0; i < Train.size(); i++)
         {
-            I.DrawLine(Train[i].Position, Train[i].Tip(), Colour(255, 255, 255));
-            I.DrawStrokedCircle(Train[i].Position, Train[i].Length, Colour(255, 255, 255));
+            I.DrawLine(Train[i].Position * ppm, Train[i].Tip() * ppm, Colour(255, 255, 255));
+            I.DrawStrokedCircle(Train[i].Position * ppm, Train[i].Length * ppm, Colour(255, 255, 255));
         }
 
         if (PenDown)
@@ -245,7 +246,7 @@ class Drawing
             for (int i = 0; i < Path.size(); i++) // start @ 2nd to not worry abt vector end
             {
                 // draw points on the path
-                I.DrawSolidCircle(Path[i], 3, Colour(255, 255, 255));
+                I.DrawSolidCircle(Path[i] * ppm, 3, Colour(255, 255, 255));
             }
         }
         I.ExportPPMImage();

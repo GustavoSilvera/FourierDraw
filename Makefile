@@ -3,7 +3,7 @@ OBJS += FourierDraw.o
 
 CXX = clang++
 CFLAGS = -std=c++11 -Wall -Werror -pedantic -pthread -fopenmp -g -DNDEBUG 
-SOURCE = source
+SOURCE = Source
 LDFLAGS += $(LIBS)
 
 default: $(TARGET)

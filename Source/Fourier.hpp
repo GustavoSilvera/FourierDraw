@@ -9,7 +9,7 @@ class FourierSeries
   public:
     /// TODO: make this better
     FourierSeries() = default;
-    FourierSeries(std::vector<Complex> &Input)
+    FourierSeries(const std::vector<Complex> &Input)
     {
         // constructor as discrete fourier transform
         for (size_t k = 0; k < Input.size(); k++)
@@ -17,7 +17,7 @@ class FourierSeries
             Complex Sum(0, 0); // complex number final
             for (size_t n = 0; n < Input.size(); n++)
             {
-                double Phi = (2 * M_PI * k * n) / N;            // constant for angular velocity
+                double Phi = (2 * M_PI * k * n) / Input.size(); // constant for angular velocity
                 const Complex C(std::cos(Phi), -std::sin(Phi)); // cos and sin component
                 Sum += Input[n] * C;                            // multiply cos & sin comp by original complex
             }

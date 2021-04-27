@@ -53,7 +53,7 @@ int main()
     /// TODO: Add params for rendering and window size and other vars
     const size_t NumArrows = 100;
     const size_t NumThreads = 4;
-    const double MaxT = 8.0;
+    const double MaxT = 45.0;
     const double DeltaT = 0.05;
     const Vec2D ScreenDim(1000, 1000);
     FourierDraw FD(NumArrows, NumThreads, MaxT, DeltaT, ScreenDim);

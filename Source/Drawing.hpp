@@ -20,8 +20,6 @@ class Drawing
         PenDown = PD;
         I = I.Init(WindowSize);
         InitialPosition = Vec2D(0, 0); // WindowSize / 2;
-        // first arrow
-        Train.push_back(Arrow(1, 1, 0, InitialPosition));
         // initialize all the arrows from the fourier transform
         FourierInit();
     }
@@ -63,6 +61,7 @@ class Drawing
         for (size_t i = 0; i < Freq; i++)
         {
             Arrow Last;
+            size_t ArrowIndex = 0;
             for (Arrow &A : Train)
             {
                 A.Theta += A.Velocity * DeltaTime; // updates position over time
@@ -76,11 +75,12 @@ class Drawing
                     A.Theta += 2 * M_PI;
                 }
 
-                if (i > 0)
+                if (ArrowIndex > 0)
                 {
                     A.Position = Last.Tip(); // ensures all positions are tip to tip
                 }
                 Last = A;
+                ArrowIndex++;
             }
             Path.push_back(Train[Train.size() - 1].Tip());
         }
@@ -89,9 +89,9 @@ class Drawing
     void Render()
     {
         /// TODO: add thickness
-        const double ppm = 100;
-        const Vec2D Center = Vec2D(I.MaxWidth / 2, I.MaxHeight / 2) - Train[0].Tip() * ppm; // middle of the window
-        for (int i = 1; i < Train.size(); i++)
+        const double ppm = 500;                                      // for normalized
+        const Vec2D Center = Vec2D(I.MaxWidth / 2, I.MaxHeight / 2); // middle of the window
+        for (int i = 0; i < Train.size(); i++)
         {
             const Vec2D Origin = Center + Train[i].Position * ppm;
             const Vec2D End = Center + Train[i].Tip() * ppm;
@@ -102,7 +102,7 @@ class Drawing
         if (PenDown)
         {
             /// TODO: draw lines bw points
-            for (int i = 1; i < Path.size(); i++) // start @ 2nd to not worry abt vector end
+            for (int i = 0; i < Path.size(); i++) // start @ 2nd to not worry abt vector end
             {
                 // draw points on the path
                 I.DrawSolidCircle(Center + Path[i] * ppm, 3, Colour(255, 0, 0));

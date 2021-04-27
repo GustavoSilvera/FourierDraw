@@ -50,11 +50,11 @@ def draw_points():
 
     points = np.vstack([points_x, points_y]).T
 
-    center(points)
+    # center(points)
 
-    normalize(points)
+    # normalize(points)
 
-    new_csv(points.T[0], points.T[1], name + "_norm")
+    # new_csv(points.T[0], points.T[1], name + "_norm")
 
     plt.clf()
     plt.plot(points.T[0], points.T[1])

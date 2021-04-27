@@ -35,8 +35,7 @@ class Drawing
     void FourierInit()
     {
         /// Initializes all the arrows via the DFT on the complex coordinates
-        /// TODO: don't do this
-        std::vector<Complex> ImgPixels; // back to sanity
+        std::vector<Complex> ImgPixels;
         const std::string FilePath = "Images/Plaid_norm.csv";
         Complex::ReadCSV(ImgPixels, FilePath);
         // Complex::ScaleBatch(ImgPixels, 1);
@@ -46,12 +45,9 @@ class Drawing
         // dont care abt 0th arrow, should be the new initP
         InitialPosition = COM.Tip(); // set Initial position to COM's tip
         F.BubbleSort();
-        for (int i = 0; i < F.Data.size(); i++)
+        for (int i = 0; i < std::min(NumArrows, F.Data.size()); i++)
         {
-            if (i < F.Data.size() && F.Data[i].Frequency != 0)
-            {
-                Train.push_back(Arrow(F.Data[i].Amplitude, F.Data[i].Frequency, F.Data[i].Phase, InitialPosition));
-            }
+            Train.push_back(Arrow(F.Data[i].Amplitude, F.Data[i].Frequency, F.Data[i].Phase, InitialPosition));
         }
         DeltaTime = (2.0 * M_PI) / F.Data.size();
     }
@@ -66,14 +62,10 @@ class Drawing
             {
                 A.Theta += A.Velocity * DeltaTime; // updates position over time
                 /// TODO: fix these angle clamps jeez
-                while (A.Theta > 2 * M_PI)
-                {
-                    A.Theta -= 2 * M_PI;
-                }
-                while (A.Theta < -2 * M_PI)
-                {
-                    A.Theta += 2 * M_PI;
-                }
+                if (A.Theta > TWOPI)
+                    A.Theta -= TWOPI;
+                if (A.Theta < -TWOPI)
+                    A.Theta += TWOPI;
 
                 if (ArrowIndex > 0)
                 {
@@ -91,7 +83,7 @@ class Drawing
         /// TODO: add thickness
         const double ppm = 500;                                      // for normalized
         const Vec2D Center = Vec2D(I.MaxWidth / 2, I.MaxHeight / 2); // middle of the window
-        for (int i = 0; i < Train.size(); i++)
+        for (size_t i = 0; i < Train.size(); i++)
         {
             const Vec2D Origin = Center + Train[i].Position * ppm;
             const Vec2D End = Center + Train[i].Tip() * ppm;
@@ -101,11 +93,14 @@ class Drawing
 
         if (PenDown)
         {
-            /// TODO: draw lines bw points
-            for (int i = 0; i < Path.size(); i++) // start @ 2nd to not worry abt vector end
+            for (size_t i = 0; i < Path.size(); i++) // start @ 2nd to not worry abt vector end
             {
                 // draw points on the path
                 I.DrawSolidCircle(Center + Path[i] * ppm, 3, Colour(255, 0, 0));
+                if (i > 1)
+                {
+                    I.DrawLine(Center + Path[i] * ppm, Center + Path[i - 1] * ppm, Colour(0, 0, 255));
+                }
             }
         }
         I.ExportPPMImage();

@@ -31,8 +31,7 @@ class FourierDraw
 
     double Tick()
     {
-
-        // Run our actual problem (boid computation)
+        // Run our actual problem
         auto StartTime = std::chrono::system_clock::now();
         const size_t Freq = 1; // does this many updates at once
         D.Update(Freq);

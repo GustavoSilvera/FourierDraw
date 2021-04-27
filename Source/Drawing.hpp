@@ -39,7 +39,7 @@ class Drawing
         /// Initializes all the arrows via the DFT on the complex coordinates
         /// TODO: don't do this
         std::vector<Complex> ImgPixels; // back to sanity
-        const std::string FilePath = "Images/Data.csv";
+        const std::string FilePath = "Images/Plaid_norm.csv";
         Complex::ReadCSV(ImgPixels, FilePath);
         // Complex::ScaleBatch(ImgPixels, 1);
         // ImgPixels = Complex::Interpolate(ImgPixels, 0);
@@ -89,7 +89,7 @@ class Drawing
     void Render()
     {
         /// TODO: add thickness
-        const double ppm = 1;
+        const double ppm = 100;
         const Vec2D Center = Vec2D(I.MaxWidth / 2, I.MaxHeight / 2) - Train[0].Tip() * ppm; // middle of the window
         for (int i = 1; i < Train.size(); i++)
         {

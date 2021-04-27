@@ -1,7 +1,6 @@
 #ifndef ARROW
 #define ARROW
 
-#include "Utils.hpp"
 #include "Vec.hpp"
 
 class Arrow

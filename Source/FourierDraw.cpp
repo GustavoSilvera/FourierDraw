@@ -34,13 +34,13 @@ class FourierDraw
 
         // Run our actual problem (boid computation)
         auto StartTime = std::chrono::system_clock::now();
-        D.Update();
+        const size_t Freq = 10; // does this many updates at once
+        D.Update(Freq);
         auto EndTime = std::chrono::system_clock::now();
         std::chrono::duration<double> ElapsedTime = EndTime - StartTime;
         // draw to file
         if (RenderingMovie)
         {
-            // Rendering is not part of our problem
             D.Render();
         }
         Time += DeltaTime;          // update simulator time

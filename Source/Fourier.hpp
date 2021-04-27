@@ -1,7 +1,7 @@
 #ifndef FOURIER
 #define FOURIER
 
-#include "Utils.hpp"
+#include "Complex.hpp"
 #include <vector>
 
 class FourierSeries

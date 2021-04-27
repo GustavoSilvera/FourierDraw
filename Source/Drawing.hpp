@@ -36,7 +36,7 @@ class Drawing
     {
         /// Initializes all the arrows via the DFT on the complex coordinates
         std::vector<Complex> ImgPixels;
-        const std::string FilePath = "Images/Plaid_norm.csv";
+        const std::string FilePath = "Data/cybertruck.csv";
         Complex::ReadCSV(ImgPixels, FilePath);
         // Complex::ScaleBatch(ImgPixels, 1);
         // ImgPixels = Complex::Interpolate(ImgPixels, 0);

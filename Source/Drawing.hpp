@@ -22,7 +22,7 @@ class Drawing
         ThreadID = TiD;  // unique thread ID per drawing
         NumThreads = NT; // number of threads in the program
         UpdatesPerTick = UpT;
-        I = I.Init(WindowSize);
+        I = I.Init(WindowSize, ThreadID, NumThreads);
         InitialPosition = Vec2D(0, 0); // WindowSize / 2;
         // initialize all the arrows from the fourier transform
         /// TODO: only do this once & share for all threads
@@ -56,6 +56,15 @@ class Drawing
             Train.push_back(Arrow(F.Data[i].Amplitude, F.Data[i].Frequency, F.Data[i].Phase, InitialPosition));
         }
         DeltaTime = (2.0 * M_PI) / F.Data.size();
+        OffsetByThread();
+    }
+
+    void OffsetByThread()
+    {
+        for (size_t i = 0; i < ThreadID; i++)
+        {
+            UpdateOnce();
+        }
     }
 
     void UpdateOnce()
@@ -104,7 +113,6 @@ class Drawing
             I.DrawLine(Origin, End, Colour(255, 255, 255));
             I.DrawStrokedCircle(Origin, Train[i].Length * ppm, Colour(255, 255, 255));
         }
-
         if (PenDown)
         {
             for (size_t i = 0; i < Path.size(); i++) // start @ 2nd to not worry abt vector end
@@ -117,7 +125,7 @@ class Drawing
                 }
             }
         }
-        I.ExportPPMImage();
+        I.ExportPPMImage(ThreadID);
         /// TODO: keep the paths in an old Image, only reset the arrow positions
         I.Blank();
     }

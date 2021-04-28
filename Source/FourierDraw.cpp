@@ -11,7 +11,7 @@ class FourierDraw
     FourierDraw(const size_t NA, const size_t P, const size_t NI, const size_t UpT, const Vec2D &WindowSize,
                 std::string &FN)
     {
-        NumIters = NI;
+        NumIters = NI / P;
         NumThreads = P;
         // creating a new drawing per thread for into-the-future parallelism
         for (size_t i = 0; i < NumThreads; i++)
@@ -29,7 +29,7 @@ class FourierDraw
         {
             ElapsedTime += Tick();
         }
-        std::cout << "Finished simulation! Took " << ElapsedTime << "s" << std::endl;
+        std::cout << std::endl << "Finished simulation! Took " << ElapsedTime << "s" << std::endl;
     }
 
     double Tick()

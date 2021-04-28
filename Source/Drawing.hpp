@@ -25,9 +25,8 @@ class Drawing
         I = I.Init(WindowSize, ThreadID, NumThreads);
         InitialPosition = Vec2D(0, 0); // WindowSize / 2;
         // initialize all the arrows from the fourier transform
-        /// TODO: only do this once & share for all threads
-        FourierInit();
     }
+
     size_t NumArrows, ThreadID, NumThreads, UpdatesPerTick;
     double DeltaTime;
     bool PenDown;
@@ -38,19 +37,25 @@ class Drawing
     std::vector<Vec2D> Path;  // path drawn by final arrow
     Vec2D InitialPosition;
 
-    void FourierInit()
+    std::vector<Complex> ReadInputFile()
     {
-        /// Initializes all the arrows via the DFT on the complex coordinates
+        // each thread reads a "chunk" of the input to divy-up the work
         std::vector<Complex> ImgPixels;
         const std::string FilePath = "Data/" + FileName;
-        Complex::ReadCSV(ImgPixels, FilePath);
+        Complex::ReadCSV(ImgPixels, FilePath, ThreadID, NumThreads);
+        return ImgPixels;
+    }
+
+    void FourierInit(std::vector<Complex> &ImgPixels)
+    {
+        /// Initializes all the arrows via the DFT on the complex coordinates
         // Complex::ScaleBatch(ImgPixels, 1);
         // ImgPixels = Complex::Interpolate(ImgPixels, 0);
-        FourierSeries F(ImgPixels);
+        FourierSeries F(ImgPixels, NumThreads);
         const Arrow COM(F.Data[0].Amplitude, F.Data[0].Frequency, F.Data[0].Phase, Vec2D());
         // dont care abt 0th arrow, should be the new initP
         InitialPosition = COM.Tip(); // set Initial position to COM's tip
-        F.BubbleSort();
+        F.Sort();
         for (int i = 0; i < std::min(NumArrows, F.Data.size()); i++)
         {
             Train.push_back(Arrow(F.Data[i].Amplitude, F.Data[i].Frequency, F.Data[i].Phase, InitialPosition));

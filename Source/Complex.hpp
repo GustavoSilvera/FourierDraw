@@ -2,8 +2,10 @@
 #define COMPLEX
 
 #include "Utils.hpp"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -116,23 +118,40 @@ class Complex
         return Inputs;
     }
 
-    static void ReadCSV(std::vector<Complex> &Output, const std::string &FilePath)
+    static void ReadCSV(std::vector<Complex> &Output, const std::string &FilePath, const size_t ThreadID,
+                        const size_t NumThreads)
     {
         // create input stream to get file data
-        std::ifstream InputCSV(FilePath);
-        if (!InputCSV.is_open())
+        std::ifstream NInputCSV(FilePath);
+        if (!NInputCSV.is_open())
         {
             std::cout << "ERROR: could not open" << FilePath << std::endl;
             exit(1);
         }
-        else
+        if (ThreadID == 0)
         {
-            std::cout << "Reading " << FilePath << "..." << std::endl;
+            std::cout << "Reading " << FilePath << "..." << std::flush;
+        }
+
+        // get number of lines in the file
+        const size_t NumLines =
+            std::count(std::istreambuf_iterator<char>(NInputCSV), std::istreambuf_iterator<char>(), '\n');
+
+        // create new file descriptor
+        std::ifstream InputCSV(FilePath);
+        /// TODO: double check for off-by-one errs
+        const size_t ChunkSize = NumLines / NumThreads;
+        const size_t Offset = ThreadID * ChunkSize;
+
+        // quickly jump to the point in the file denoted by Offset
+        for (size_t i = 0; i < Offset; ++i)
+        {
+            InputCSV.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
         // read from file into Output vector
         std::string Tmp;
         const std::string Delim = ",";
-        while (!InputCSV.eof())
+        for (size_t i = 0; i < ChunkSize && !InputCSV.eof(); i++)
         {
             InputCSV >> Tmp;
             if (InputCSV.bad() || InputCSV.fail())

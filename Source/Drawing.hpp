@@ -13,17 +13,22 @@ class Drawing
 {
   public:
     Drawing() = default;
-    Drawing(const size_t NA, const bool PD, const Vec2D &WindowSize, std::string &FN)
+    Drawing(const size_t NA, const bool PD, const size_t TiD, const size_t NT, const int UpT, const Vec2D &WindowSize,
+            std::string &FN)
     {
         NumArrows = NA;
         PenDown = PD;
         FileName = FN;
+        ThreadID = TiD;  // unique thread ID per drawing
+        NumThreads = NT; // number of threads in the program
+        UpdatesPerTick = UpT;
         I = I.Init(WindowSize);
         InitialPosition = Vec2D(0, 0); // WindowSize / 2;
         // initialize all the arrows from the fourier transform
+        /// TODO: only do this once & share for all threads
         FourierInit();
     }
-    size_t NumArrows;
+    size_t NumArrows, ThreadID, NumThreads, UpdatesPerTick;
     double DeltaTime;
     bool PenDown;
     std::string FileName;
@@ -53,9 +58,9 @@ class Drawing
         DeltaTime = (2.0 * M_PI) / F.Data.size();
     }
 
-    void Update(const size_t Freq)
+    void UpdateOnce()
     {
-        for (size_t i = 0; i < Freq; i++)
+        for (size_t i = 0; i < UpdatesPerTick; i++)
         {
             Arrow Last;
             size_t ArrowIndex = 0;
@@ -76,6 +81,14 @@ class Drawing
                 ArrowIndex++;
             }
             Path.push_back(Train[Train.size() - 1].Tip());
+        }
+    }
+
+    void Update()
+    {
+        for (size_t i = 0; i < NumThreads; i++)
+        {
+            UpdateOnce();
         }
     }
 

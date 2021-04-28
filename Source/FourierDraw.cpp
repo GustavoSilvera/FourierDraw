@@ -1,6 +1,7 @@
 #include "Drawing.hpp"
 #include <chrono>
 #include <cstdlib>
+#include <omp.h>
 #include <string>
 #include <vector>
 
@@ -11,12 +12,16 @@ class FourierDraw
                 std::string &FN)
     {
         NumIters = NI;
-        UpdatesPerTick = UpT;
-        D = Drawing(NA, true, WindowSize, FN);
+        NumThreads = P;
+        // creating a new drawing per thread for into-the-future parallelism
+        for (size_t i = 0; i < NumThreads; i++)
+        {
+            Ds.push_back(Drawing(NA, true, i, P, UpT, WindowSize, FN));
+        }
     }
-    Drawing D;
+    std::vector<Drawing> Ds;
     bool RenderingMovie = true;
-    size_t UpdatesPerTick, NumIters;
+    size_t NumIters, NumThreads;
     void Run()
     {
         double ElapsedTime = 0;
@@ -31,13 +36,21 @@ class FourierDraw
     {
         // Run our actual problem
         auto StartTime = std::chrono::system_clock::now();
-        D.Update(UpdatesPerTick);
+#pragma omp parallel for num_threads(NumThreads)
+        for (size_t i = 0; i < Ds.size(); i++)
+        {
+            Ds[i].Update();
+        }
         auto EndTime = std::chrono::system_clock::now();
         std::chrono::duration<double> ElapsedTime = EndTime - StartTime;
         // draw to file
         if (RenderingMovie)
         {
-            D.Render();
+#pragma omp parallel for num_threads(NumThreads)
+            for (size_t i = 0; i < Ds.size(); i++)
+            {
+                Ds[i].Render();
+            }
         }
         return ElapsedTime.count(); // return wall clock time diff
     }

@@ -13,17 +13,21 @@ class Drawing
 {
   public:
     Drawing() = default;
-    Drawing(const size_t NA, const bool PD, const Vec2D &WindowSize, std::string &FN)
+    Drawing(const size_t NA, const bool PD, const size_t TiD, const size_t NT, const int UpT, const Vec2D &WindowSize,
+            std::string &FN)
     {
         NumArrows = NA;
         PenDown = PD;
         FileName = FN;
-        I = I.Init(WindowSize);
+        ThreadID = TiD;  // unique thread ID per drawing
+        NumThreads = NT; // number of threads in the program
+        UpdatesPerTick = UpT;
+        I = I.Init(WindowSize, ThreadID, NumThreads);
         InitialPosition = Vec2D(0, 0); // WindowSize / 2;
         // initialize all the arrows from the fourier transform
-        FourierInit();
     }
-    size_t NumArrows;
+
+    size_t NumArrows, ThreadID, NumThreads, UpdatesPerTick;
     double DeltaTime;
     bool PenDown;
     std::string FileName;
@@ -33,29 +37,44 @@ class Drawing
     std::vector<Vec2D> Path;  // path drawn by final arrow
     Vec2D InitialPosition;
 
-    void FourierInit()
+    std::vector<Complex> ReadInputFile()
     {
-        /// Initializes all the arrows via the DFT on the complex coordinates
+        // each thread reads a "chunk" of the input to divy-up the work
         std::vector<Complex> ImgPixels;
         const std::string FilePath = "Data/" + FileName;
-        Complex::ReadCSV(ImgPixels, FilePath);
+        Complex::ReadCSV(ImgPixels, FilePath, ThreadID, NumThreads);
+        return ImgPixels;
+    }
+
+    void FourierInit(std::vector<Complex> &ImgPixels)
+    {
+        /// Initializes all the arrows via the DFT on the complex coordinates
         // Complex::ScaleBatch(ImgPixels, 1);
         // ImgPixels = Complex::Interpolate(ImgPixels, 0);
-        FourierSeries F(ImgPixels);
+        FourierSeries F(ImgPixels, NumThreads);
         const Arrow COM(F.Data[0].Amplitude, F.Data[0].Frequency, F.Data[0].Phase, Vec2D());
         // dont care abt 0th arrow, should be the new initP
         InitialPosition = COM.Tip(); // set Initial position to COM's tip
-        F.BubbleSort();
+        F.Sort();
         for (int i = 0; i < std::min(NumArrows, F.Data.size()); i++)
         {
             Train.push_back(Arrow(F.Data[i].Amplitude, F.Data[i].Frequency, F.Data[i].Phase, InitialPosition));
         }
         DeltaTime = (2.0 * M_PI) / F.Data.size();
+        OffsetByThread();
     }
 
-    void Update(const size_t Freq)
+    void OffsetByThread()
     {
-        for (size_t i = 0; i < Freq; i++)
+        for (size_t i = 0; i < ThreadID; i++)
+        {
+            UpdateOnce();
+        }
+    }
+
+    void UpdateOnce()
+    {
+        for (size_t i = 0; i < UpdatesPerTick; i++)
         {
             Arrow Last;
             size_t ArrowIndex = 0;
@@ -79,6 +98,14 @@ class Drawing
         }
     }
 
+    void Update()
+    {
+        for (size_t i = 0; i < NumThreads; i++)
+        {
+            UpdateOnce();
+        }
+    }
+
     void Render()
     {
         /// TODO: add thickness
@@ -91,7 +118,6 @@ class Drawing
             I.DrawLine(Origin, End, Colour(255, 255, 255));
             I.DrawStrokedCircle(Origin, Train[i].Length * ppm, Colour(255, 255, 255));
         }
-
         if (PenDown)
         {
             for (size_t i = 0; i < Path.size(); i++) // start @ 2nd to not worry abt vector end
@@ -104,7 +130,7 @@ class Drawing
                 }
             }
         }
-        I.ExportPPMImage();
+        I.ExportPPMImage(ThreadID);
         /// TODO: keep the paths in an old Image, only reset the arrow positions
         I.Blank();
     }

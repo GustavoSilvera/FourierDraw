@@ -30,9 +30,10 @@ def new_csv(x, y, name):
 
 
 def find_good_connections(contours, path):
-    # basically completes a greedy-traveling-salesman walk which is
-    # much (MUCH) faster than a complete traveling-salesman approach but may
+    # basically completes a greedy-wandering-salesman walk which is
+    # much (MUCH) faster than a complete wandering-salesman approach but may
     # produce more errors since it is only approximate
+    # TODO: implement *traveling* salesman which has the option of going back
     if len(contours) == 0:
         # base case, no more contours to account for
         return path

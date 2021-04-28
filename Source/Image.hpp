@@ -41,7 +41,7 @@ class Image
   public:
     Image() = default;
 
-    Image(const size_t W, const size_t H)
+    Image(const size_t W, const size_t H, const size_t TiD, const size_t NT)
     {
         MaxWidth = W;
         MaxHeight = H;
@@ -56,22 +56,25 @@ class Image
             Data.push_back(Row);
         }
         assert(Data.size() == W && Data[0].size == H);
+        ThreadID = TiD;
+        NumThreads = NT;
+        NumExported = 0;
     }
 
-    Image Init(const size_t W, const size_t H)
+    Image Init(const size_t W, const size_t H, const size_t TiD, const size_t NT)
     {
-        return Image(W, H); // initialize all data and clear blank
+        return Image(W, H, TiD, NT); // initialize all data and clear blank
     }
 
-    Image Init(const Vec2D Dims)
+    Image Init(const Vec2D Dims, const size_t TiD, const size_t NT)
     {
-        return Init(Dims[0], Dims[1]); // initialize all data and clear blank
+        return Init(Dims[0], Dims[1], TiD, NT); // initialize all data and clear blank
     }
 
     size_t MaxWidth;
     size_t MaxHeight;
     std::vector<std::vector<Colour>> Data;
-    size_t NumExported = 0;
+    size_t NumExported, ThreadID, NumThreads;
     void SetPixel(const size_t X, const size_t Y, const Colour C)
     {
         /// TODO: do we need to check bounds always? even with EdgeWrap?
@@ -226,17 +229,18 @@ class Image
         }
     }
 
-    void ExportPPMImage()
+    void ExportPPMImage(const size_t TiD)
     {
         const size_t NumLeading0s = 4; // max 9999 frames
         const size_t MaxFrames = std::pow(10, NumLeading0s);
-        if (NumExported > MaxFrames)
+        const size_t ImgID = NumExported * NumThreads + ThreadID;
+        if (ImgID > MaxFrames)
         {
             std::cout << "Cannot export more than " << MaxFrames << " frames! " << std::endl;
             return;
         }
         std::string Path = "Out/";
-        std::string NumStr = std::to_string(NumExported); // which frame this is
+        std::string NumStr = std::to_string(ImgID); // which frame this is
         std::string Filename = Path + std::string(NumLeading0s - NumStr.length(), '0') + NumStr + ".ppm";
 
         // Begin writing output stream
@@ -251,8 +255,11 @@ class Image
             }
         }
         Img.close();
-        NumExported++;                                                       // exported a new file
-        std::cout << "Wrote image file: " << Filename << "\r" << std::flush; // carriage return, no newline
+        NumExported++; // exported a new file
+        if (TiD == 0)
+        {
+            std::cout << "(t0) Wrote image file: " << Filename << "\r" << std::flush; // carriage return, no newline
+        }
     }
 };
 

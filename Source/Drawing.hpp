@@ -13,11 +13,12 @@ class Drawing
 {
   public:
     Drawing() = default;
-    Drawing(const size_t NA, const double DT, const bool PD, const Vec2D &WindowSize)
+    Drawing(const size_t NA, const double DT, const bool PD, const Vec2D &WindowSize, std::string &FN)
     {
         NumArrows = NA;
         DeltaTime = DT;
         PenDown = PD;
+        FileName = FN;
         I = I.Init(WindowSize);
         InitialPosition = Vec2D(0, 0); // WindowSize / 2;
         // initialize all the arrows from the fourier transform
@@ -26,6 +27,7 @@ class Drawing
     size_t NumArrows;
     double DeltaTime;
     bool PenDown;
+    std::string FileName;
     Image I;
 
     std::vector<Arrow> Train; // Train of arrows
@@ -36,7 +38,7 @@ class Drawing
     {
         /// Initializes all the arrows via the DFT on the complex coordinates
         std::vector<Complex> ImgPixels;
-        const std::string FilePath = "Data/cybertruck.csv";
+        const std::string FilePath = "Data/" + FileName;
         Complex::ReadCSV(ImgPixels, FilePath);
         // Complex::ScaleBatch(ImgPixels, 1);
         // ImgPixels = Complex::Interpolate(ImgPixels, 0);

@@ -125,6 +125,10 @@ class Complex
             std::cout << "ERROR: could not open" << FilePath << std::endl;
             exit(1);
         }
+        else
+        {
+            std::cout << "Reading " << FilePath << "..." << std::endl;
+        }
         // read from file into Output vector
         std::string Tmp;
         const std::string Delim = ",";

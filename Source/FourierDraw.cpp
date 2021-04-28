@@ -1,5 +1,4 @@
 #include "Drawing.hpp"
-#include <array>
 #include <chrono>
 #include <cstdlib>
 #include <omp.h>
@@ -17,6 +16,7 @@ class FourierDraw
         // creating a new drawing per thread for into-the-future parallelism
         std::cout << "Running on " << FN << " for " << NI << " iterations with " << NA << " moons and " << P
                   << " threads at " << UpT << " updates per tick" << std::endl;
+        /// NOTE: this initial portion is really what hurts performance, everything else scales
         InitializeDrawings(NA, UpT, WindowSize, FN);
     }
     std::vector<Drawing> Ds;
@@ -29,16 +29,16 @@ class FourierDraw
         {
             Ds.push_back(Drawing(NA, true, i, NumThreads, UpT, WindowSize, FN));
         }
-        std::array<std::vector<Complex>, 4> InputChunks;
+        std::vector<std::vector<Complex>> InputChunks;
 #pragma omp parallel for num_threads(NumThreads)
         for (size_t i = 0; i < NumThreads; i++)
         {
             // accumulate all the file-io chunks
-            InputChunks[i] = Ds[i].ReadInputFile();
+            InputChunks.push_back(Ds[i].ReadInputFile());
         }
         std::cout << "... Done!" << std::endl;
-        // sequentially join all the vectors together in *correct* order
         std::vector<Complex> Cumulative;
+        // sequentially join all the vectors together in *correct* order
         for (size_t i = 0; i < NumThreads; i++)
         {
             std::vector<Complex> Chunk = InputChunks[i];
@@ -60,7 +60,7 @@ class FourierDraw
         {
             ElapsedTime += Tick();
         }
-        std::cout << "Epicycle updating took " << ElapsedTime << "s" << std::endl;
+        std::cout << std::endl << "Epicycle updating took " << ElapsedTime << "s" << std::endl;
         auto EndTime = std::chrono::system_clock::now();
         std::chrono::duration<double> TotalTime = EndTime - StartTime;
         std::cout << "Total simulation took " << TotalTime.count() << "s" << std::endl;
@@ -97,7 +97,7 @@ int main()
     /// TODO: use numthreads in some way (probably rendering)
     const size_t NumThreads = 8;
     const size_t NumIters = 200;
-    const size_t UpdatesPerTick = 2;
+    const size_t UpdatesPerTick = 20;
     std::string FileName = "ai_dragonscs.csv";
     const Vec2D ScreenDim(1000, 1000);
     FourierDraw FD(NumArrows, NumThreads, NumIters, UpdatesPerTick, ScreenDim, FileName);

@@ -38,6 +38,7 @@ class FourierSeries
     void Sort()
     {
         std::sort(Data.begin(), Data.end(), FourierCmp());
+        std::reverse(Data.begin(), Data.end());
     }
 
     void BubbleSort()

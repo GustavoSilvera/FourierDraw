@@ -36,15 +36,14 @@ For the smoothest experience, you'll want the following packages:
 - `clang` (For compilation)
 - `ffmpeg` (For creating the movie out of the output images)
 - `python3` (For the `PythonAPI`)
-- `openmp` (For on the `openmp` branch until it is merged to main)
+- `openmp` (For multithreading parallelism)
 ```bash
 sudo apt update
 sudo apt install build-essential
 sudo apt install clang
 sudo apt install ffmpeg
 sudo apt install python3, python3-pip
-
-sudo apt install libomp-dev # if you're on the omp branch
+sudo apt install libomp-dev
 ```
 
 Then you should just be able to build the project with a simple `make` command

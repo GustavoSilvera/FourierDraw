@@ -2,7 +2,8 @@ TARGET = FourierDraw
 OBJS += FourierDraw.o
 
 CXX = clang++
-CFLAGS = -std=c++11 -Wall -Werror -pedantic -pthread -fopenmp -g -DNDEBUG 
+CFLAGS = -std=c++11 -Wall -Werror -pedantic -pthread -g -DNDEBUG 
+# CFLAGS = -std=c++11 -Wall -Werror -pedantic -pthread -fopenmp -g -DNDEBUG 
 SOURCE = Source
 LDFLAGS += $(LIBS)
 

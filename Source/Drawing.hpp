@@ -13,10 +13,9 @@ class Drawing
 {
   public:
     Drawing() = default;
-    Drawing(const size_t NA, const double DT, const bool PD, const Vec2D &WindowSize, std::string &FN)
+    Drawing(const size_t NA, const bool PD, const Vec2D &WindowSize, std::string &FN)
     {
         NumArrows = NA;
-        DeltaTime = DT;
         PenDown = PD;
         FileName = FN;
         I = I.Init(WindowSize);

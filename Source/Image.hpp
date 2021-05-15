@@ -219,7 +219,7 @@ class Image
         }
     }
 
-    void ExportPPMImage(const size_t TiD)
+    void ExportPPMImage()
     {
         const size_t NumLeading0s = 4; // max 9999 frames
         const size_t MaxFrames = std::pow(10, NumLeading0s);
@@ -248,7 +248,7 @@ class Image
         }
         Img.close();
         NumExported++; // exported a new file
-        if (TiD == 0)
+        if (ThreadID == 0)
         {
             std::cout << "(t0) Wrote image file: " << Filename << "\r" << std::flush; // carriage return, no newline
         }

@@ -118,8 +118,43 @@ class Complex
         return Inputs;
     }
 
-    static void ReadCSV(std::vector<Complex> &Output, const std::string &FilePath, const size_t ThreadID,
-                        const size_t NumThreads)
+    static void ReadCSV(std::vector<Complex> &Output, const std::string &FilePath)
+    {
+        // create input stream to get file data
+        std::ifstream InputCSV(FilePath);
+        if (!InputCSV.is_open())
+        {
+            std::cout << "ERROR: could not open" << FilePath << std::endl;
+            exit(1);
+        }
+        else
+        {
+            std::cout << "Reading " << FilePath << "..." << std::endl;
+        }
+        // read from file into Output vector
+        std::string Tmp;
+        const std::string Delim = ",";
+        while (!InputCSV.eof())
+        {
+            InputCSV >> Tmp;
+            if (InputCSV.bad() || InputCSV.fail())
+                break;
+
+            // parse line for the values
+            std::string RealStr = Tmp.substr(0, Tmp.find(Delim));
+            // offset +1 -1 for the commas before & after
+            std::string ImagStr = Tmp.substr(Tmp.find(Delim) + 1, Tmp.size() - 1);
+            if (RealStr.compare("dataX") == 0 || ImagStr.compare("dataY") == 0)
+                continue; // ignore headers
+            double Real = std::stod(RealStr);
+            double Imag = std::stod(ImagStr);
+            Output.push_back(Complex(Real, Imag));
+        }
+    }
+
+    /// DEPRACATED: bc io is inherently sequential
+    static void ReadCSV_Par(std::vector<Complex> &Output, const std::string &FilePath, const size_t ThreadID,
+                            const size_t NumThreads)
     {
         // create input stream to get file data
         std::ifstream NInputCSV(FilePath);

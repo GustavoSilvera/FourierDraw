@@ -29,25 +29,26 @@ class Drawing
     std::vector<Vec2D> Path;  // path drawn by final arrow
     Vec2D InitialPosition;
 
-    std::vector<Complex> ReadInputFile()
+    static std::vector<Complex> ReadInputFile()
     {
         // each thread reads a "chunk" of the input to divy-up the work
         std::vector<Complex> ImgPixels;
         const std::string FilePath = "Data/" + Params.Simulator.FileName;
-        Complex::ReadCSV(ImgPixels, FilePath, ThreadID, Params.Simulator.NumThreads);
+        Complex::ReadCSV(ImgPixels, FilePath);
         return ImgPixels;
     }
 
-    void FourierInit(std::vector<Complex> &ImgPixels)
+    void FourierInit(const std::vector<Complex> &ImgPixels)
     {
         /// Initializes all the arrows via the DFT on the complex coordinates
         // Complex::ScaleBatch(ImgPixels, 1);
         // ImgPixels = Complex::Interpolate(ImgPixels, 0);
-        FourierSeries F(ImgPixels, Params.Simulator.NumThreads);
+        FourierSeries F;
+        F.DFT(ImgPixels, ThreadID);
         const Arrow COM(F.Data[0].Amplitude, F.Data[0].Frequency, F.Data[0].Phase, Vec2D());
         // dont care abt 0th arrow, should be the new initP
         InitialPosition = COM.Tip(); // set Initial position to COM's tip
-        F.Sort();
+        F.Sort(ThreadID);
         for (int i = 0; i < std::min(Params.Simulator.NumArrows, F.Data.size()); i++)
         {
             Train.push_back(Arrow(F.Data[i].Amplitude, F.Data[i].Frequency, F.Data[i].Phase, InitialPosition));
@@ -122,7 +123,7 @@ class Drawing
                 }
             }
         }
-        I.ExportPPMImage(ThreadID);
+        I.ExportPPMImage();
         /// TODO: keep the paths in an old Image, only reset the arrow positions
         I.Blank();
     }

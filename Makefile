@@ -3,7 +3,7 @@ TARGET = FourierDraw
 OUT_DIR = Out
 OBJ_DIR = Objs
 
-OBJS += $(OBJ_DIR)/FourierDraw.o
+OBJS += $(OBJ_DIR)/FourierDraw.o $(OBJ_DIR)/Fourier.o
 
 CXX = clang++
 CFLAGS = -std=c++11 -Wall -Werror -pedantic -pthread -fopenmp -g 

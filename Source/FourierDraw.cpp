@@ -27,21 +27,9 @@ class FourierDraw
         {
             Drawings.push_back(Drawing(i));
         }
-        std::vector<std::vector<Complex>> InputChunks;
-#pragma omp parallel for num_threads(Params.Simulator.NumThreads)
-        for (size_t i = 0; i < Params.Simulator.NumThreads; i++)
-        {
-            // accumulate all the file-io chunks
-            InputChunks.push_back(Drawings[i].ReadInputFile());
-        }
-        std::cout << "... Done!" << std::endl;
-        std::vector<Complex> Cumulative;
-        // sequentially join all the vectors together in *correct* order
-        for (size_t i = 0; i < Params.Simulator.NumThreads; i++)
-        {
-            std::vector<Complex> &Chunk = InputChunks[i];
-            Cumulative.insert(Cumulative.end(), Chunk.begin(), Chunk.end());
-        }
+        // read input file (sequential)
+        const std::vector<Complex> Cumulative = Drawing::ReadInputFile();
+        // assign to each drawing
 #pragma omp parallel for num_threads(Params.Simulator.NumThreads)
         for (size_t i = 0; i < Params.Simulator.NumThreads; i++)
         {

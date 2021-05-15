@@ -81,7 +81,7 @@ inline void ParseParams(const std::string &FilePath)
         Input >> Tmp;
         if (Input.bad() || Input.fail())
             break;
-        if (Tmp.at(0) == '[' || Tmp.at(0) == '#') // ignoring labels & comments
+        if (Tmp.at(0) == '[' || Tmp.at(0) == '#' || Tmp.at(0) == ';') // ignoring labels & comments
             continue;
         std::string ParamName = Tmp.substr(0, Tmp.find(Delim));
         std::string ParamValue = Tmp.substr(Tmp.find(Delim) + 1, Tmp.size());

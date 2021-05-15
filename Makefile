@@ -1,23 +1,35 @@
 TARGET = FourierDraw
-OBJS += FourierDraw.o
+
+OUT_DIR = Out
+OBJ_DIR = Objs
+
+OBJS += $(OBJ_DIR)/FourierDraw.o
 
 CXX = clang++
-CFLAGS = -std=c++11 -Wall -Werror -pedantic -pthread -fopenmp -g -O3 -DNDEBUG 
-SOURCE = Source
+CFLAGS = -std=c++11 -Wall -Werror -pedantic -pthread -fopenmp -g 
+CFLAGS += -O3 # optimization
+CFLAGS += -DNDEBUG # no debug
+
+SRC_DIR = Source
 LDFLAGS += $(LIBS)
 
 default: $(TARGET)
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+dirs:
+	mkdir -p $(OUT_DIR)
+	mkdir -p $(OBJ_DIR)
 
-%.o: $(SOURCE)/%.cpp
+$(TARGET): dirs $(OBJS)
+	$(CXX) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
 DEPS = $(OBJS:%.o=%.d)
 -include $(DEPS)
 
 clean: 
-	rm $(TARGET) $(OBJS) || true
-	rm -rf Out/*.ppm || true
+	rm $(TARGET) || true
+	rm -rf $(OUT_DIR) || true
+	rm -rf $(OBJ_DIR) || true

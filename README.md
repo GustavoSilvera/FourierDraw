@@ -79,3 +79,25 @@ To use arbitrary images, follow these instructions:
    1. Optionally, run `python3 PythonAPI/show_image_traces.py` to show the traces plotted
 3. Edit the file input and other parameters in `FourierDraw.cpp` to best suit the image
 4. Run `./FourierDraw.sh` or each of the steps independently
+
+## Tuning Params
+You might be interested in tuning the number of circles that are drawing the image, number of threads, how long the simulator runs, etc. These can all be found and edited in the `Params/` directory
+
+To run with the default `Params/params.ini` you just run the `./FourierDraw` without arguments
+
+However, to run with a custom `Params/custom_params.ini` you must specify the name as the only argument, eg. `./FourierDraw custom_params.ini`
+
+The params config files can be tuned at runtime and don't require recompilation:
+```ini
+[Simulator]
+input_image=ai_dragonscs.csv # filename of the dataset we're rendering
+num_arrows=5000              # max number of 'circles' drawing the image
+num_iters=200                # number of iterations the simulator runs for
+num_threads=8                # number of threads being spawned to run 
+updates_per_tick=20          # how fast the circles move (larger is faster)
+render=true                  # whether or not to render the image
+
+[Image]
+window_x=1000 # x dimension of output image
+window_y=1000 # y dimension of output image
+```
